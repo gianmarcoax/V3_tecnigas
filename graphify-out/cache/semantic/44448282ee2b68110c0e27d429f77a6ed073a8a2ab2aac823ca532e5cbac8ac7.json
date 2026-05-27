@@ -1,0 +1,1 @@
+{"nodes": [{"id": "carbon_carbon", "label": "Carbon", "file_type": "code", "source_file": "vendor/nesbot/carbon/readme.md"}], "edges": [{"source": "carbon_carbon", "target": "mockery_mock", "relation": "references", "confidence": "INFERRED", "confidence_score": 0.8, "source_file": "vendor/nesbot/carbon/readme.md"}], "hyperedges": []}

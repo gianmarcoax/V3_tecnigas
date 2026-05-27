@@ -1,0 +1,1 @@
+{"nodes": [{"id": "sebastian_diff_differ", "label": "SebastianBergmann\\Diff\\Differ", "file_type": "code", "source_file": "vendor/sebastian/diff/README.md"}], "edges": [{"source": "sebastian_diff_differ", "target": "phpunit_phpunit", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "vendor/sebastian/diff/README.md"}], "hyperedges": []}

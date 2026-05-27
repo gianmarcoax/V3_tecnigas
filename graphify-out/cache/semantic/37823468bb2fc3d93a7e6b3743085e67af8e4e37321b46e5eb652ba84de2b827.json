@@ -1,0 +1,1 @@
+{"nodes": [{"id": "deepcopy_deepcopy", "label": "DeepCopy", "file_type": "code", "source_file": "vendor/myclabs/deep-copy/README.md"}], "edges": [{"source": "deepcopy_deepcopy", "target": "mockery_mock", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "vendor/myclabs/deep-copy/README.md"}], "hyperedges": []}
