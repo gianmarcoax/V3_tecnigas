@@ -1,7 +1,5 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Ranking de Ventas</h2>
-    </x-slot>
+
 
     <div class="py-6 px-4 max-w-7xl mx-auto" id="app">
 

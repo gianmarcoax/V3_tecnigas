@@ -14,23 +14,34 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100">
-            @include('layouts.navigation')
+    <body class="font-sans antialiased text-gray-900 bg-gray-50">
+        
+        <!-- Wrapper principal que contiene Sidebar y Contenido usando x-data para Alpine -->
+        <div x-data="{ sidebarOpen: false }" class="flex h-screen overflow-hidden bg-gray-50">
+            
+            <!-- Sidebar Desktop y Mobile -->
+            @include('layouts.sidebar')
 
-            <!-- Page Heading -->
-            @isset($header)
-                <header class="bg-white shadow">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
-                    </div>
-                </header>
-            @endisset
+            <!-- Contenedor Principal (Derecha) -->
+            <div class="flex-1 flex flex-col overflow-hidden w-full relative">
+                
+                <!-- Navbar Superior -->
+                @include('layouts.navigation')
 
-            <!-- Page Content -->
-            <main>
-                {{ $slot }}
-            </main>
+                <!-- Cabecera de Página (Opcional, de Breeze) -->
+                @isset($header)
+                    <header class="bg-white border-b border-gray-100 shrink-0">
+                        <div class="py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+                            {{ $header }}
+                        </div>
+                    </header>
+                @endisset
+
+                <!-- Área desplazable de contenido -->
+                <main class="flex-1 overflow-y-auto bg-gray-50">
+                    {{ $slot }}
+                </main>
+            </div>
         </div>
     </body>
 </html>
