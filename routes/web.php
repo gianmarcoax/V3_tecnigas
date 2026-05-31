@@ -9,6 +9,8 @@ use App\Http\Controllers\RemuneracionController;
 use App\Http\Controllers\AsistenciasController;
 use App\Http\Controllers\RecepcionController;
 use App\Http\Controllers\TrasladoController;
+use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\LimpiezaController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -41,3 +43,14 @@ Route::get('/recepcion', [RecepcionController::class, 'index'])->middleware(['au
 
 //traslado
 Route::get('/traslado', [TrasladoController::class, 'index'])->middleware(['auth', 'role:almacen'])->name('traslado');
+
+// Configuración (solo admin)
+Route::middleware(['auth', 'role'])->prefix('config')->name('config.')->group(function () {
+    Route::get('/',          [ConfigController::class, 'index'])->name('index');
+    Route::post('/usuarios', [ConfigController::class, 'store'])->name('store');
+    Route::put('/usuarios/{user}',    [ConfigController::class, 'update'])->name('update');
+    Route::delete('/usuarios/{user}', [ConfigController::class, 'destroy'])->name('destroy');
+});
+
+// Orden y Limpieza
+Route::get('/limpieza', [LimpiezaController::class, 'index'])->middleware(['auth', 'role:limpieza'])->name('limpieza');

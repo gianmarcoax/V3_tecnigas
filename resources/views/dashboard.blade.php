@@ -184,7 +184,7 @@
 
             @if(auth()->user()->isAdmin() || auth()->user()->isLimpieza())
             {{-- Orden y Limpieza --}}
-            <a href="#"
+            <a href="{{ route('limpieza') }}"
                 class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-pink-300">
                 <div class="flex items-center gap-4">
                     <div class="bg-pink-100 text-pink-600 rounded-xl p-3">
@@ -203,6 +203,37 @@
             </a>
             @endif
 
+            @if(auth()->user()->isAdmin())
+            {{-- Configuración --}}
+            <a href="{{ route('config.index') }}"
+                class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-indigo-300">
+                <div class="flex items-center gap-4">
+                    <div class="bg-indigo-100 text-indigo-600 rounded-xl p-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-800 text-lg group-hover:text-indigo-600 transition">Configuración
+                        </h3>
+                        <p class="text-gray-400 text-sm">Usuarios, roles y sistema</p>
+                    </div>
+                </div>
+            </a>
+            @endif
+
         </div>
+
+        {{-- Flash de acceso denegado --}}
+        @if(session('error'))
+        <div id="flash-error" class="fixed bottom-6 right-6 flex items-center gap-3 bg-red-600 text-white px-5 py-3 rounded-xl shadow-lg text-sm z-50">
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            {{ session('error') }}
+        </div>
+        <script>setTimeout(()=>document.getElementById('flash-error')?.remove(), 4000)</script>
+        @endif
     </div>
-</x-app-layout>
+</x-app-layout>

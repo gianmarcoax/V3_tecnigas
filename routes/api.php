@@ -9,6 +9,7 @@ use App\Http\Controllers\VentasController;
 use App\Http\Controllers\AsistenciasController;
 use App\Http\Controllers\RecepcionController;
 use App\Http\Controllers\TrasladoController;
+use App\Http\Controllers\LimpiezaController;
 
 // Empleados
 Route::get('/empleados',        [EmpleadoController::class, 'index']);
@@ -79,3 +80,6 @@ Route::post('/traslado',           [TrasladoController::class, 'store']);
 Route::post('/traslado/{id}/confirm', [TrasladoController::class, 'confirm']);
 Route::put('/traslado/{id}',       [TrasladoController::class, 'update']);
 Route::delete('/traslado/{id}',    [TrasladoController::class, 'destroy']);
+
+// Orden y Limpieza
+Route::get('/limpieza/empleados', [LimpiezaController::class, 'empleados']);
