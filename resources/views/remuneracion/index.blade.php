@@ -1963,16 +1963,22 @@
             
             document.getElementById('exportModalSub').textContent = window.lastBonoSemanalLabel || 'Semana actual';
             
+            // Leer selección guardada previamente
+            const guardado = localStorage.getItem('bonoExportSelection');
+            const selectedIds = guardado ? JSON.parse(guardado) : null;
+            
             const list = document.getElementById('exportEmpList');
-            list.innerHTML = window.lastBonoSemanalData.map(e => `
+            list.innerHTML = window.lastBonoSemanalData.map(e => {
+                const isChecked = selectedIds ? selectedIds.includes(e.id) : true;
+                return `
                 <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg">
-                    <input type="checkbox" id="exp_${e.id}" value="${e.id}" class="exp-checkbox w-4 h-4 text-violet-600 rounded border-gray-300" checked>
+                    <input type="checkbox" id="exp_${e.id}" value="${e.id}" class="exp-checkbox w-4 h-4 text-violet-600 rounded border-gray-300" ${isChecked ? 'checked' : ''} onchange="verificarSelectAllExport()">
                     <label for="exp_${e.id}" class="text-sm text-gray-700 cursor-pointer flex-1 select-none">${e.name}</label>
                     <span class="text-xs font-semibold text-violet-700">Bono: ${e.bono_individual > 0 ? fmt(e.bono_individual) : '0.00'}</span>
                 </div>
-            `).join('');
+            `}).join('');
             
-            document.getElementById('checkExportAll').checked = true;
+            verificarSelectAllExport();
             document.getElementById('modalExportarExcel').classList.remove('hidden');
         }
 
@@ -1984,6 +1990,12 @@
             const checkboxes = document.querySelectorAll('.exp-checkbox');
             checkboxes.forEach(c => c.checked = cb.checked);
         }
+        
+        function verificarSelectAllExport() {
+            const checkboxes = document.querySelectorAll('.exp-checkbox');
+            const allChecked = Array.from(checkboxes).every(c => c.checked);
+            document.getElementById('checkExportAll').checked = allChecked;
+        }
 
         function exportarBonoExcel() {
             const checkboxes = document.querySelectorAll('.exp-checkbox:checked');
@@ -1993,6 +2005,10 @@
             }
             
             const selectedIds = Array.from(checkboxes).map(c => parseInt(c.value));
+            
+            // Guardar selección para futuras exportaciones
+            localStorage.setItem('bonoExportSelection', JSON.stringify(selectedIds));
+            
             const dataToExport = window.lastBonoSemanalData.filter(e => selectedIds.includes(e.id));
             
             // Generar CSV (compatible con Excel mediante delimitador ;)

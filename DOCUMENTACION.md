@@ -688,15 +688,19 @@ Las operaciones de creación de `stock.move` en Odoo se realizan en batch (una s
 - **PDF de ventas:** estructurado por medio de pago (Efectivo / Yape / Tarjeta) con resumen final
 - **Documentación** actualizada en `docs/DOCUMENTACION.md`
 
-### Mayo 2026 — V3.0 (Migración a Laravel)
+### Mayo 2026 — V3.0 (Migración a Laravel y Nuevos Módulos)
 - **Migración completa** de Python + HTML suelto a Laravel 11 + PHP 8.2
-- **BD local** PostgreSQL `tecnigas_bd` creada con 6 tablas
-- **Autenticación** con Laravel Breeze (login, sesiones, logout)
-- **Panel principal** con 8 tarjetas de módulos (Blade + Tailwind)
-- **Models** con relaciones Eloquent: Employee, SalaryConfig, ShiftGoal, EmployeeGoal, AttendanceJustification
-- **Controllers** RemuneracionController (6 endpoints) y EmpleadoController (3 endpoints)
-- **API Routes** registradas en `routes/api.php`
-- **Documentación** migrada a `docs/DOCUMENTACION.md`
+- **BD local** PostgreSQL `tecnigas_bd` creada con sus respectivas tablas.
+- **Autenticación y Roles:** Sistema de login con Laravel Breeze y jerarquía de roles (`admin`, `almacen`, `vendedor`, `limpieza`) con middleware y panel de configuración CRUD de usuarios.
+- **Módulo Orden y Limpieza:** Nueva interfaz interactiva para calificar al personal de Ventas (0-2 puntos diarios). Sincronización automática de días de descanso desde el calendario de Odoo (`resource.calendar.attendance`).
+- **Mejoras en Remuneraciones (Bono Semanal):** 
+  - La tabla "Nómina Semanal" fue renombrada a "Bono Semanal".
+  - Apertura de modal de detalles y justificaciones al hacer clic en las filas de los trabajadores.
+  - Generación y descarga de archivos Excel (.csv con formato BOM UTF-8 y separador de punto y coma) de las nóminas semanales.
+  - Memoria inteligente (`localStorage`) de los trabajadores seleccionados para actuar como plantilla rápida en exportaciones futuras.
+- **Panel principal** con tarjetas dinámicas (Blade + Tailwind) según el rol del usuario.
+- **Models** con relaciones Eloquent: Employee, SalaryConfig, ShiftGoal, EmployeeGoal, AttendanceJustification, OrderCleanlinessScore, OrderCleanlinessConfig.
+- **Controllers** RemuneracionController, EmpleadoController, LimpiezaController, ConfigController.
 
 ### Mayo 2026 — V2.4 (última versión Python)
 - Módulo Remuneración completo (salarios, bonos, metas, justificaciones)
