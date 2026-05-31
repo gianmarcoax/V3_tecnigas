@@ -27,17 +27,17 @@ Route::middleware('auth')->group(function () {
 require __DIR__.'/auth.php';
 
 //VENTAS
-Route::get('/ventas', [VentasController::class, 'index'])->middleware('auth')->name('ventas');
+Route::get('/ventas', [VentasController::class, 'index'])->middleware(['auth', 'role'])->name('ventas');
 
 //Remuneracion
-Route::get('/remuneracion', [RemuneracionController::class, 'index'])->middleware('auth')->name('remuneracion');
+Route::get('/remuneracion', [RemuneracionController::class, 'index'])->middleware(['auth', 'role'])->name('remuneracion');
 
 //Asistencias
-Route::get('/asistencias', [AsistenciasController::class, 'index'])->middleware('auth')->name('asistencias');
+Route::get('/asistencias', [AsistenciasController::class, 'index'])->middleware(['auth', 'role'])->name('asistencias');
 
 //RECEPCIÓN DE PRODUCTOS
 // web.php — solo la vista
-Route::get('/recepcion', [RecepcionController::class, 'index'])->middleware('auth')->name('recepcion');
+Route::get('/recepcion', [RecepcionController::class, 'index'])->middleware(['auth', 'role:almacen'])->name('recepcion');
 
 //traslado
-Route::get('/traslado', [TrasladoController::class, 'index'])->middleware('auth')->name('traslado');
+Route::get('/traslado', [TrasladoController::class, 'index'])->middleware(['auth', 'role:almacen'])->name('traslado');

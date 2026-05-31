@@ -16,6 +16,7 @@
         {{-- Grid de módulos --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
+            @if(auth()->user()->isAdmin())
             {{-- Catálogo --}}
             <a href="#"
                 class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-blue-300">
@@ -34,7 +35,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin())
             {{-- Ventas --}}
             <a href="{{ route('ventas') }}"
                 class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-green-300">
@@ -53,7 +56,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin())
             {{-- Asistencias --}}
             <a href="{{ route('asistencias') }}"
                 class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-teal-300">
@@ -72,7 +77,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->isAlmacen() || auth()->user()->isVendedor())
             {{-- Stock --}}
             <a href="#"
                 class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-sky-300">
@@ -90,7 +97,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin())
             {{-- Remuneración --}}
             <a href="{{ route('remuneracion') }}"
                 class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-violet-300">
@@ -109,7 +118,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->isAlmacen())
             {{-- Recepción --}}
             <a href="{{ route('recepcion') }}"
                 class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-orange-300">
@@ -128,7 +139,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->isAlmacen())
             {{-- Traslado --}}
             <a href="{{ route('traslado') }}"
                 class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-yellow-300">
@@ -147,7 +160,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin())
             {{-- Productos --}}
             <a href="#"
                 class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-rose-300">
@@ -165,6 +180,28 @@
                     </div>
                 </div>
             </a>
+            @endif
+
+            @if(auth()->user()->isAdmin() || auth()->user()->isLimpieza())
+            {{-- Orden y Limpieza --}}
+            <a href="#"
+                class="group block bg-white rounded-2xl shadow hover:shadow-lg transition p-6 border border-gray-100 hover:border-pink-300">
+                <div class="flex items-center gap-4">
+                    <div class="bg-pink-100 text-pink-600 rounded-xl p-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-800 text-lg group-hover:text-pink-600 transition">Orden y Limpieza
+                        </h3>
+                        <p class="text-gray-400 text-sm">Auditorías y puntajes</p>
+                    </div>
+                </div>
+            </a>
+            @endif
 
         </div>
     </div>
