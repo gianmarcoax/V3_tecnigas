@@ -24,7 +24,7 @@
                 <button onclick="switchMainTab(0,this)" id="mtab0" class="tab-btn tab-active">Resumen</button>
                 <button onclick="switchMainTab(1,this)" id="mtab1" class="tab-btn tab-inactive">Configuración</button>
                 <button onclick="switchMainTab(2,this)" id="mtab2" class="tab-btn tab-inactive">Nómina Mensual</button>
-                <button onclick="switchMainTab(3,this)" id="mtab3" class="tab-btn tab-inactive">Nómina Semanal</button>
+                <button onclick="switchMainTab(3,this)" id="mtab3" class="tab-btn tab-inactive">Bono Semanal</button>
                 <button onclick="switchMainTab(4,this)" id="mtab4" class="tab-btn tab-inactive">Orden y Limpieza</button>
             </div>
         </div>
@@ -243,7 +243,7 @@
             </div>
         </div>
 
-        {{-- ═══ TAB NÓMINA SEMANAL ═══ --}}
+        {{-- ═══ TAB BONO SEMANAL ═══ --}}
         <div id="mpanel3" class="hidden">
             <div class="bg-white rounded-2xl shadow p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
@@ -259,9 +259,15 @@
                         </svg>
                     </button>
                 </div>
-                <button onclick="cargarNominaSemanal()" class="text-xs bg-violet-100 text-violet-700 hover:bg-violet-200 px-3 py-1.5 rounded-lg font-medium transition">
-                    Actualizar
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="abrirModalExportar()" class="flex items-center gap-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1.5 rounded-lg font-medium transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Exportar
+                    </button>
+                    <button onclick="cargarNominaSemanal()" class="text-xs bg-violet-100 text-violet-700 hover:bg-violet-200 px-3 py-1.5 rounded-lg font-medium transition">
+                        Actualizar
+                    </button>
+                </div>
             </div>
             <div id="nominaSemanalCont">
                 <p class="text-center text-gray-400 text-sm py-10">Cargando nómina semanal...</p>
@@ -302,6 +308,40 @@
             </div>
         </div>
 
+    </div>
+
+    {{-- ═══ MODAL EXPORTAR EXCEL ═══ --}}
+    <div id="modalExportarExcel" class="hidden fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between p-4 border-b shrink-0">
+                <div>
+                    <h3 class="font-bold text-gray-800 text-sm">Exportar Bono Semanal</h3>
+                    <p class="text-xs text-gray-400 mt-0.5" id="exportModalSub"></p>
+                </div>
+                <button onclick="cerrarModalExportar()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto">
+                <p class="text-xs text-gray-500 mb-3">Selecciona a los empleados que deseas incluir en el archivo Excel:</p>
+                
+                <div class="flex items-center gap-2 mb-3 bg-gray-50 p-2 rounded-lg border">
+                    <input type="checkbox" id="checkExportAll" checked class="w-4 h-4 text-violet-600 rounded border-gray-300" onchange="toggleExportAll(this)">
+                    <label for="checkExportAll" class="text-sm font-semibold text-gray-700 cursor-pointer select-none">Seleccionar todos</label>
+                </div>
+                
+                <div id="exportEmpList" class="space-y-1">
+                    <!-- Checkboxes de empleados -->
+                </div>
+            </div>
+            <div class="p-4 border-t bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-2xl">
+                <button onclick="cerrarModalExportar()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-xl transition">Cancelar</button>
+                <button onclick="exportarBonoExcel()" class="px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded-xl transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Descargar Excel
+                </button>
+            </div>
+        </div>
     </div>
 
     {{-- ═══ MODAL JUSTIFICACIÓN ═══ --}}
@@ -849,6 +889,9 @@
                 const semanaLabel = d.week_start && d.week_end
                     ? `${fmtSemana(d.week_start)}`
                     : fmtSemana(ws);
+
+                window.lastBonoSemanalData = emps;
+                window.lastBonoSemanalLabel = semanaLabel;
 
                 // Separar por turno
                 const manana = emps.filter(e => e.turno === 'manana').sort((a, b) => b.bono_bruto - a.bono_bruto);
@@ -1911,6 +1954,77 @@
         // Init
         document.getElementById('lblSemana').textContent = fmtSemana(getWeekStart(0));
         cargarResumen();
+        // ── Exportación a Excel ──────────────────────────────────────────
+        function abrirModalExportar() {
+            if (!window.lastBonoSemanalData || window.lastBonoSemanalData.length === 0) {
+                alert('No hay datos cargados para exportar. Haz clic en "Actualizar" primero.');
+                return;
+            }
+            
+            document.getElementById('exportModalSub').textContent = window.lastBonoSemanalLabel || 'Semana actual';
+            
+            const list = document.getElementById('exportEmpList');
+            list.innerHTML = window.lastBonoSemanalData.map(e => `
+                <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg">
+                    <input type="checkbox" id="exp_${e.id}" value="${e.id}" class="exp-checkbox w-4 h-4 text-violet-600 rounded border-gray-300" checked>
+                    <label for="exp_${e.id}" class="text-sm text-gray-700 cursor-pointer flex-1 select-none">${e.name}</label>
+                    <span class="text-xs font-semibold text-violet-700">Bono: ${e.bono_individual > 0 ? fmt(e.bono_individual) : '0.00'}</span>
+                </div>
+            `).join('');
+            
+            document.getElementById('checkExportAll').checked = true;
+            document.getElementById('modalExportarExcel').classList.remove('hidden');
+        }
+
+        function cerrarModalExportar() {
+            document.getElementById('modalExportarExcel').classList.add('hidden');
+        }
+
+        function toggleExportAll(cb) {
+            const checkboxes = document.querySelectorAll('.exp-checkbox');
+            checkboxes.forEach(c => c.checked = cb.checked);
+        }
+
+        function exportarBonoExcel() {
+            const checkboxes = document.querySelectorAll('.exp-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert('Selecciona al menos un empleado para exportar.');
+                return;
+            }
+            
+            const selectedIds = Array.from(checkboxes).map(c => parseInt(c.value));
+            const dataToExport = window.lastBonoSemanalData.filter(e => selectedIds.includes(e.id));
+            
+            // Generar CSV (compatible con Excel mediante delimitador ;)
+            let csv = '\uFEFF';
+            csv += 'Orden;Vendedor;Turno;Ventas Semanales;Faltas;Tardanzas;Bono Calculado;O&L Puntos;Bono Final\n';
+            
+            dataToExport.forEach((e, i) => {
+                const nombre = `"${e.name.replace(/"/g, '""')}"`;
+                const turno = e.turno || 'Indefinido';
+                const ventas = e.ventas_semana ? e.ventas_semana.toFixed(2).replace('.', ',') : '0,00';
+                const faltas = e.faltas || 0;
+                const tardanzas = e.tardanzas || 0;
+                const bonoCalc = e.bono_bruto ? e.bono_bruto.toFixed(2).replace('.', ',') : '0,00';
+                const olPts = e.ol_puntos !== null ? e.ol_puntos : 'Sin calificar';
+                const bonoFinal = e.bono_individual ? e.bono_individual.toFixed(2).replace('.', ',') : '0,00';
+                
+                csv += `${i+1};${nombre};${turno};${ventas};${faltas};${tardanzas};${bonoCalc};${olPts};${bonoFinal}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const labelStr = (window.lastBonoSemanalLabel || 'semana').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            a.href = url;
+            a.download = `bono_semanal_${labelStr}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            cerrarModalExportar();
+        }
+
     </script>
 
     {{-- ═══ PANEL NÓMINA EMPLEADO ═══ --}}
