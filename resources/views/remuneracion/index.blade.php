@@ -879,7 +879,7 @@
                         totVentas += e.ventas_semana;
                         totBonoBruto += e.bono_bruto;
                         totBonoFinal += e.bono_individual;
-                        return `<tr class="border-b hover:bg-gray-50">
+                        return `<tr class="border-b hover:bg-violet-50 cursor-pointer transition-colors" onclick="abrirDetalle(${e.id}, '${d.week_start || ws}')" title="Clic para ver detalle y justificar asistencias">
                             <td class="px-3 py-2 text-xs font-bold text-gray-500">${orden}</td>
                             <td class="px-3 py-2 text-sm font-semibold text-gray-800">${e.name.split(' ')[0]}</td>
                             <td class="px-3 py-2 text-sm text-right font-mono">${e.ventas_semana > 0 ? e.ventas_semana.toLocaleString('es-PE',{minimumFractionDigits:1,maximumFractionDigits:1}) : '0.0'}</td>
