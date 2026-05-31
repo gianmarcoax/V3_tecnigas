@@ -27,6 +27,7 @@ Route::post('/remuneracion/justificacion',   [RemuneracionController::class, 'sa
 Route::get('/ventas/ranking', [VentasController::class, 'ranking']);
 Route::get('/ventas/detail',  [VentasController::class, 'detail']);
 Route::get('/ventas/export',  [VentasController::class, 'export']);
+Route::get('/ventas/debug',   [VentasController::class, 'debug']); // ← TEMPORAL diagnóstico
 
 //Remuneración
 Route::get('/remuneracion/semana',  [RemuneracionController::class, 'semana']);

@@ -652,7 +652,10 @@ Las operaciones de creación de `stock.move` en Odoo se realizan en batch (una s
 
 ---
 
-## 📋 Historial de Cambios
+## 📜 Historial de Cambios
+
+### Mayo 2026 — V3.4.1 (Hotfix Ventas)
+- **Fix Crítico de Ranking:** Solucionado el bug en `VentasController` donde usuarios aparecían duplicados (y otros desaparecían) en el podio. La causa raíz era un problema clásico de PHP de variables pasadas por referencia en bucles `foreach`. Se eliminó la lógica innecesaria de "fusión de nombres" y el código ahora es más limpio y rápido.
 
 ### Mayo 2026 — V3.4 (Exportación y Soporte Masivo)
 - **Integración nativa BarTender:** Se reemplazó exportación "falsa" por motor real de Excel (`ZipArchive`) generando `.xlsx` exactos ("Impresión 2.0") y descarga directa en navegador.

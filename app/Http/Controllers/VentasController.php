@@ -15,6 +15,80 @@ class VentasController extends Controller
         return view('ventas.index');
     }
 
+    // GET /api/ventas/debug?date_from=&date_to=  ← DIAGNÓSTICO TEMPORAL
+    public function debug(Request $request)
+    {
+        $dateFrom = $request->get('date_from', '2026-05-18');
+        $dateTo   = $request->get('date_to',   '2026-05-24');
+
+        $utcFrom = \Carbon\Carbon::parse($dateFrom . ' 00:00:00', 'America/Lima')->setTimezone('UTC')->format('Y-m-d H:i:s');
+        $utcTo   = \Carbon\Carbon::parse($dateTo   . ' 23:59:59', 'America/Lima')->setTimezone('UTC')->format('Y-m-d H:i:s');
+
+        $domain = [
+            ['state', 'in', ['paid', 'done', 'invoiced']],
+            ['date_order', '>=', $utcFrom],
+            ['date_order', '<=', $utcTo],
+        ];
+
+        $orders = $this->odoo->searchRead('pos.order', $domain,
+            ['id', 'name', 'amount_total', 'employee_id', 'user_id'],
+            ['limit' => 5000]
+        );
+
+        // Agrupar combinaciones únicas de (employee_id, user_id)
+        $combos = [];
+        foreach ($orders as $o) {
+            $eid = $o['employee_id'] ?? false;
+            $uid = $o['user_id'] ?? false;
+            $eidVal  = ($eid && $eid[0]) ? $eid[0] : null;
+            $eidName = ($eid && $eid[0]) ? $eid[1] : 'null';
+            $uidVal  = ($uid && $uid[0]) ? $uid[0] : null;
+            $uidName = ($uid && $uid[0]) ? $uid[1] : 'null';
+            $comboKey = "emp:{$eidVal}|usr:{$uidVal}";
+            if (!isset($combos[$comboKey])) {
+                $combos[$comboKey] = [
+                    'employee_id'   => $eidVal,
+                    'employee_name' => $eidName,
+                    'user_id'       => $uidVal,
+                    'user_name'     => $uidName,
+                    'order_count'   => 0,
+                    'total'         => 0.0,
+                ];
+            }
+            $combos[$comboKey]['order_count']++;
+            $combos[$comboKey]['total'] += floatval($o['amount_total'] ?? 0);
+        }
+
+        // Mapa de empleados activos con su user_id
+        $empMap = [];
+        try {
+            $allEmps = $this->odoo->searchRead(
+                'hr.employee',
+                [['active', 'in', [true, false]]],  // incluir archivados
+                ['id', 'name', 'user_id', 'active'],
+                ['limit' => 500]
+            );
+            foreach ($allEmps as $e) {
+                $empMap[] = [
+                    'id'      => $e['id'],
+                    'name'    => $e['name'],
+                    'active'  => $e['active'] ?? true,
+                    'user_id' => ($e['user_id'] && $e['user_id'][0]) ? $e['user_id'][0] : null,
+                    'user_name' => ($e['user_id'] && $e['user_id'][0]) ? $e['user_id'][1] : null,
+                ];
+            }
+        } catch (\Exception $ex) {
+            $empMap = ['error' => $ex->getMessage()];
+        }
+
+        return response()->json([
+            'date_range'         => "$dateFrom → $dateTo",
+            'total_orders'       => count($orders),
+            'unique_combos'      => array_values($combos),
+            'hr_employee_list'   => $empMap,
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+
     // GET /api/ventas/ranking?date_from=&date_to=
     public function ranking(Request $request)
     {
@@ -40,9 +114,27 @@ class VentasController extends Controller
             return response()->json(['ranking' => [], 'total_global' => 0, 'order_count' => 0, 'seller_count' => 0]);
         }
 
-        // Agrupar por cajero
-        $groups = [];
+        // Mapa user_id → {eid, name} para órdenes sin employee_id
+        $userToEmp = [];
+        try {
+            $empsWithUser = $this->odoo->searchRead(
+                'hr.employee',
+                [['user_id', '!=', false]],
+                ['id', 'name', 'user_id'],
+                ['limit' => 500]
+            );
+            foreach ($empsWithUser as $e) {
+                $uid = $e['user_id'] ?? false;
+                if ($uid && $uid[0]) {
+                    $userToEmp[$uid[0]] = ['eid' => $e['id'], 'name' => $e['name']];
+                }
+            }
+        } catch (\Exception $e) {}
+
+        // ── Agrupar por cajero ──────────────────────────────────────────────────
+        $groups      = [];
         $orderKeyMap = [];
+
         foreach ($orders as $o) {
             $emp = $o['employee_id'] ?? false;
             $usr = $o['user_id'] ?? false;
@@ -51,12 +143,18 @@ class VentasController extends Controller
                 $key  = 'emp_' . $emp[0];
                 $name = $emp[1];
                 $eid  = $emp[0];
-                $uid  = $usr ? $usr[0] : null;
+                $uid  = ($usr && $usr[0]) ? $usr[0] : null;
             } elseif ($usr && $usr[0]) {
-                $key  = 'usr_' . $usr[0];
-                $name = $usr[1];
-                $eid  = null;
-                $uid  = $usr[0];
+                $uid = $usr[0];
+                if (isset($userToEmp[$uid])) {
+                    $key  = 'emp_' . $userToEmp[$uid]['eid'];
+                    $name = $userToEmp[$uid]['name'];
+                    $eid  = $userToEmp[$uid]['eid'];
+                } else {
+                    $key  = 'usr_' . $uid;
+                    $name = $usr[1];
+                    $eid  = null;
+                }
             } else {
                 $key  = 'none_0';
                 $name = 'Sin asignar';
@@ -66,14 +164,21 @@ class VentasController extends Controller
 
             if (!isset($groups[$key])) {
                 $groups[$key] = [
-                    'name' => $name, 'user_id' => $uid, 'employee_id' => $eid,
-                    'total' => 0.0, 'orders' => 0, 'last_sale' => null, 'photo' => null,
-                    'pay_efectivo' => 0.0, 'pay_yape' => 0.0, 'pay_tarjeta' => 0.0,
-                    'order_ids' => [],
+                    'name'         => $name,
+                    'user_id'      => $uid ?? null,
+                    'employee_id'  => $eid,
+                    'total'        => 0.0,
+                    'orders'       => 0,
+                    'last_sale'    => null,
+                    'photo'        => null,
+                    'pay_efectivo' => 0.0,
+                    'pay_yape'     => 0.0,
+                    'pay_tarjeta'  => 0.0,
+                    'order_ids'    => [],
                 ];
             }
-            $groups[$key]['total']  += floatval($o['amount_total'] ?? 0);
-            $groups[$key]['orders'] += 1;
+            $groups[$key]['total']      += floatval($o['amount_total'] ?? 0);
+            $groups[$key]['orders']     += 1;
             $groups[$key]['order_ids'][] = $o['id'];
             $orderKeyMap[$o['id']] = $key;
             $ds = $o['date_order'] ?? null;
@@ -82,7 +187,7 @@ class VentasController extends Controller
             }
         }
 
-        // Medios de pago
+        // ── Medios de pago ──────────────────────────────────────────────────────
         $allOrderIds = array_column($orders, 'id');
         try {
             $payments = $this->odoo->searchRead('pos.payment',
@@ -108,19 +213,21 @@ class VentasController extends Controller
             }
         } catch (\Exception $e) {}
 
-        // Fotos
+        // ── Fotos ───────────────────────────────────────────────────────────────
         $empIds = array_filter(array_column(array_values($groups), 'employee_id'));
         if ($empIds) {
             try {
-                $emps = $this->odoo->searchRead('hr.employee', [['id', 'in', array_values($empIds)]], ['id', 'image_128']);
+                $emps   = $this->odoo->searchRead('hr.employee', [['id', 'in', array_values($empIds)]], ['id', 'image_128']);
                 $photos = array_column($emps, 'image_128', 'id');
                 foreach ($groups as &$g) {
                     if ($g['employee_id']) $g['photo'] = $photos[$g['employee_id']] ?? null;
                 }
+                unset($g); // ← CRÍTICO: liberar la referencia para evitar
+                           //   que el siguiente foreach sobreescriba el último elemento
             } catch (\Exception $e) {}
         }
 
-        // Ordenar y construir resultado
+        // ── Ordenar y devolver ──────────────────────────────────────────────────
         usort($groups, fn($a, $b) => $b['total'] <=> $a['total']);
         $totalGlobal = array_sum(array_column($groups, 'total'));
 
@@ -151,6 +258,8 @@ class VentasController extends Controller
             'seller_count' => count($result),
         ]);
     }
+
+
 
     // GET /api/ventas/detail?employee_id=&date_from=&date_to=
     public function detail(Request $request)
