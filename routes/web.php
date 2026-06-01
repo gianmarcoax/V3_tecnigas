@@ -44,6 +44,9 @@ Route::get('/recepcion', [RecepcionController::class, 'index'])->middleware(['au
 //traslado
 Route::get('/traslado', [TrasladoController::class, 'index'])->middleware(['auth', 'role:almacen'])->name('traslado');
 
+//stock
+Route::get('/stock', [App\Http\Controllers\StockController::class, 'index'])->middleware(['auth', 'role:almacen,vendedor'])->name('stock');
+
 // Configuración (solo admin)
 Route::middleware(['auth', 'role'])->prefix('config')->name('config.')->group(function () {
     Route::get('/',          [ConfigController::class, 'index'])->name('index');

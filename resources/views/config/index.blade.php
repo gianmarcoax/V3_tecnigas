@@ -2,10 +2,11 @@
 
 
     <style>
-        .badge-admin    { background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
-        .badge-almacen  { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
-        .badge-vendedor { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-        .badge-limpieza { background: #fdf4ff; color: #a21caf; border: 1px solid #f5d0fe; }
+        .badge-admin         { background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
+        .badge-administrador { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .badge-almacen       { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+        .badge-vendedor      { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .badge-limpieza      { background: #fdf4ff; color: #a21caf; border: 1px solid #f5d0fe; }
 
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.5);
@@ -72,13 +73,14 @@
         @endif
 
         {{-- Stats de roles --}}
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             @php
                 $roleConfig = [
-                    'admin'    => ['label' => 'Administradores', 'color' => '#4338ca', 'bg' => '#eef2ff', 'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'],
-                    'almacen'  => ['label' => 'Almacén',         'color' => '#c2410c', 'bg' => '#fff7ed', 'icon' => 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8'],
-                    'vendedor' => ['label' => 'Vendedores',      'color' => '#15803d', 'bg' => '#f0fdf4', 'icon' => 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'],
-                    'limpieza' => ['label' => 'Limpieza',        'color' => '#a21caf', 'bg' => '#fdf4ff', 'icon' => 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z'],
+                    'admin'         => ['label' => 'Super Admins',    'color' => '#4338ca', 'bg' => '#eef2ff', 'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'],
+                    'administrador' => ['label' => 'Administradores', 'color' => '#1d4ed8', 'bg' => '#eff6ff', 'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z'],
+                    'almacen'       => ['label' => 'Almacén',         'color' => '#c2410c', 'bg' => '#fff7ed', 'icon' => 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8'],
+                    'vendedor'      => ['label' => 'Vendedores',      'color' => '#15803d', 'bg' => '#f0fdf4', 'icon' => 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'],
+                    'limpieza'      => ['label' => 'Limpieza',        'color' => '#a21caf', 'bg' => '#fdf4ff', 'icon' => 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z'],
                 ];
             @endphp
             @foreach($roleConfig as $roleKey => $cfg)
@@ -120,7 +122,7 @@
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm"
-                                        style="background: {{ ['admin'=>'#6366f1','almacen'=>'#f97316','vendedor'=>'#22c55e','limpieza'=>'#d946ef'][$user->role] ?? '#6b7280' }};">
+                                        style="background: {{ ['admin'=>'#6366f1','administrador'=>'#3b82f6','almacen'=>'#f97316','vendedor'=>'#22c55e','limpieza'=>'#d946ef'][$user->role] ?? '#6b7280' }};">
                                         {{ strtoupper(substr($user->name, 0, 1)) }}
                                     </div>
                                     <div>

@@ -57,7 +57,7 @@
             @endif
         </a>
 
-        @if(auth()->user()->isAdmin())
+        @if(auth()->user()->isAdmin() || auth()->user()->isAdministrador())
         <!-- Categoría: Gestión POS -->
         <div class="pt-5 pb-1.5 px-3">
             <p class="text-xs font-semibold uppercase tracking-widest" style="color:rgba(255,255,255,0.3);">Gestión POS</p>
@@ -90,26 +90,28 @@
         </a>
         @endif
 
-        @if(auth()->user()->isAdmin() || auth()->user()->isAlmacen() || auth()->user()->isVendedor())
+        @if(auth()->user()->isAdmin() || auth()->user()->isAdministrador() || auth()->user()->isAlmacen() || auth()->user()->isVendedor())
         <!-- Categoría: Inventario -->
         <div class="pt-5 pb-1.5 px-3">
             <p class="text-xs font-semibold uppercase tracking-widest" style="color:rgba(255,255,255,0.3);">Inventario</p>
         </div>
 
-        <a href="#"
+        @php $isStock = request()->routeIs('stock'); @endphp
+        <a href="{{ route('stock') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
-           style="color:rgba(255,255,255,0.65);"
-           onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='white';"
-           onmouseout="this.style.background=''; this.style.color='rgba(255,255,255,0.65)';">
-            <svg class="w-5 h-5 flex-shrink-0" style="color:rgba(255,255,255,0.4)"
+           style="{{ $isStock ? 'background:rgba(59,130,246,0.18); color:white;' : 'color:rgba(255,255,255,0.65);' }}"
+           onmouseover="if(!this.style.background||this.style.background.indexOf('59,130')===-1) this.style.background='rgba(255,255,255,0.06)'; this.style.color='white';"
+           onmouseout="if(!this.style.background||this.style.background.indexOf('59,130')===-1) { this.style.background=''; this.style.color='rgba(255,255,255,0.65)'; }">
+            <svg class="w-5 h-5 flex-shrink-0" style="color: {{ $isStock ? '#93c5fd' : 'rgba(255,255,255,0.4)' }}"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m16 0H4"/>
             </svg>
             Consultar Stock
+            @if($isStock) <span class="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400"></span> @endif
         </a>
         @endif
 
-        @if(auth()->user()->isAdmin() || auth()->user()->isAlmacen())
+        @if(auth()->user()->isAdmin() || auth()->user()->isAdministrador() || auth()->user()->isAlmacen())
         @php $isRecepcion = request()->routeIs('recepcion'); @endphp
         <a href="{{ route('recepcion') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
@@ -140,13 +142,13 @@
         @endif
 
         <!-- Categoría: Recursos Humanos -->
-        @if(auth()->user()->isAdmin() || auth()->user()->isLimpieza())
+        @if(auth()->user()->isAdmin() || auth()->user()->isAdministrador() || auth()->user()->isLimpieza())
         <div class="pt-5 pb-1.5 px-3">
             <p class="text-xs font-semibold uppercase tracking-widest" style="color:rgba(255,255,255,0.3);">Recursos Humanos</p>
         </div>
         @endif
 
-        @if(auth()->user()->isAdmin())
+        @if(auth()->user()->isAdmin() || auth()->user()->isAdministrador())
         @php $isAsistencias = request()->routeIs('asistencias'); @endphp
         <a href="{{ route('asistencias') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
@@ -176,7 +178,7 @@
         </a>
         @endif
 
-        @if(auth()->user()->isAdmin() || auth()->user()->isLimpieza())
+        @if(auth()->user()->isAdmin() || auth()->user()->isAdministrador() || auth()->user()->isLimpieza())
         @php $isLimpieza = request()->routeIs('limpieza'); @endphp
         <a href="{{ route('limpieza') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"

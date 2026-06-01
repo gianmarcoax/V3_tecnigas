@@ -81,5 +81,9 @@ Route::post('/traslado/{id}/confirm', [TrasladoController::class, 'confirm']);
 Route::put('/traslado/{id}',       [TrasladoController::class, 'update']);
 Route::delete('/traslado/{id}',    [TrasladoController::class, 'destroy']);
 
+// stock
+Route::get('/stock/productos', [App\Http\Controllers\StockController::class, 'productos']);
+Route::get('/stock/imagenes',  [App\Http\Controllers\StockController::class, 'imagenes']);
+
 // Orden y Limpieza
 Route::get('/limpieza/empleados', [LimpiezaController::class, 'empleados']);

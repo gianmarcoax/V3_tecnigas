@@ -9,17 +9,18 @@ use Illuminate\Validation\Rules\Password;
 
 class ConfigController extends Controller
 {
-    private const ROLES = ['admin', 'almacen', 'vendedor', 'limpieza'];
+    private const ROLES = ['admin', 'administrador', 'almacen', 'vendedor', 'limpieza'];
 
     public function index()
     {
         $users = User::orderBy('role')->orderBy('name')->get();
         $roles = self::ROLES;
         $roleStats = [
-            'admin'    => $users->where('role', 'admin')->count(),
-            'almacen'  => $users->where('role', 'almacen')->count(),
-            'vendedor' => $users->where('role', 'vendedor')->count(),
-            'limpieza' => $users->where('role', 'limpieza')->count(),
+            'admin'         => $users->where('role', 'admin')->count(),
+            'administrador' => $users->where('role', 'administrador')->count(),
+            'almacen'       => $users->where('role', 'almacen')->count(),
+            'vendedor'      => $users->where('role', 'vendedor')->count(),
+            'limpieza'      => $users->where('role', 'limpieza')->count(),
         ];
         return view('config.index', compact('users', 'roles', 'roleStats'));
     }

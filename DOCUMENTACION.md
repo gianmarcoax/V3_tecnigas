@@ -174,6 +174,7 @@ Usuarios del dashboard (gestionado por Laravel Breeze).
 | name | string | Nombre del usuario |
 | email | string unique | Email de login |
 | password | string | Hash bcrypt |
+| role | enum | 'admin', 'administrador', 'almacen', 'vendedor', 'limpieza' |
 | timestamps | | created_at, updated_at |
 
 ### Tabla: `employees`
@@ -691,7 +692,7 @@ Las operaciones de creación de `stock.move` en Odoo se realizan en batch (una s
 ### Mayo 2026 — V3.0 (Migración a Laravel y Nuevos Módulos)
 - **Migración completa** de Python + HTML suelto a Laravel 11 + PHP 8.2
 - **BD local** PostgreSQL `tecnigas_bd` creada con sus respectivas tablas.
-- **Autenticación y Roles:** Sistema de login con Laravel Breeze y jerarquía de roles (`admin`, `almacen`, `vendedor`, `limpieza`) con middleware y panel de configuración CRUD de usuarios.
+- **Autenticación y Roles:** Sistema de login con Laravel Breeze y jerarquía de roles (`admin`, `administrador`, `almacen`, `vendedor`, `limpieza`) con middleware y panel de configuración CRUD de usuarios.
 - **Módulo Orden y Limpieza:** Nueva interfaz interactiva para calificar al personal de Ventas (0-2 puntos diarios). Sincronización automática de días de descanso desde el calendario de Odoo (`resource.calendar.attendance`).
 - **Mejoras en Remuneraciones (Bono Semanal):** 
   - La tabla "Nómina Semanal" fue renombrada a "Bono Semanal".

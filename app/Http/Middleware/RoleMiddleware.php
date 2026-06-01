@@ -26,6 +26,14 @@ class RoleMiddleware
             return $next($request);
         }
 
+        // Administrador has access to everything except config
+        if ($user->isAdministrador()) {
+            if ($request->is('config*')) {
+                return redirect()->route('dashboard')->with('error', 'No tienes permiso para acceder a la configuración.');
+            }
+            return $next($request);
+        }
+
         if (!in_array($user->role, $roles)) {
             // Redirect to dashboard with error or just abort
             return redirect()->route('dashboard')->with('error', 'No tienes permiso para acceder a este módulo.');
