@@ -1,5 +1,46 @@
 <x-app-layout>
 
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #modal-pdf, #pdf-content, #pdf-content * {
+                visibility: visible;
+            }
+            #modal-pdf {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                padding: 0 !important;
+            }
+            #pdf-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                overflow: visible !important;
+                max-height: none !important;
+                height: auto !important;
+                padding: 20px !important;
+            }
+            /* Ocultar header y footer del modal al imprimir */
+            #modal-pdf > div > div.border-b, 
+            #modal-pdf > div > div.border-t {
+                display: none !important;
+            }
+            /* Prevenir recortes de tablas */
+            tr, h2, .summary-box {
+                page-break-inside: avoid;
+            }
+            @page {
+                margin: 1.5cm;
+            }
+        }
+    </style>
+
 
     <div class="py-6 px-4 max-w-7xl mx-auto" id="app">
 
@@ -115,8 +156,8 @@
         <div id="modal-pdf" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div class="flex items-center justify-between p-4 border-b">
-                    <h3 class="font-semibold text-gray-800">Vista previa PDF</h3>
-                    <button onclick="cerrarModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+                    <h3 class="font-semibold text-gray-800">Vista previa del reporte</h3>
+                    <button onclick="cerrarModal()" class="text-gray-400 hover:text-gray-600">&#x2715;</button>
                 </div>
                 <div class="overflow-y-auto flex-1 p-6" id="pdf-content">
                     <p class="text-center text-gray-400 py-8">Cargando datos...</p>
@@ -124,9 +165,8 @@
                 <div class="p-4 border-t flex justify-end gap-3">
                     <button onclick="cerrarModal()"
                         class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
-                    <button onclick="window.print()"
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">Imprimir
-                        / Guardar PDF</button>
+                    <button onclick="imprimirPDF()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">Guardar / Imprimir PDF</button>
                 </div>
             </div>
         </div>
@@ -347,57 +387,187 @@
         }
 
         function renderPDF(data) {
-            const { by_payment, totals, seller_name, total_orders } = data;
-            const payLabels = { efectivo: '💴 Efectivo', yape: '📱 Yape / Plin', tarjeta: '💳 Tarjeta' };
+            const { orders, totals, seller_name, total_orders } = data;
 
-            let html = `
-            <div style="font-family:Inter,sans-serif;max-width:800px;margin:0 auto;">
-                <div style="text-align:center;margin-bottom:24px;">
-                    <h1 style="font-size:20px;font-weight:700;color:#0f172a;">Reporte de Ventas — Tecnigas</h1>
-                    <p style="color:#64748b;font-size:13px;">${seller_name} · ${currentPeriod.from} al ${currentPeriod.to} · ${total_orders} órdenes</p>
-                </div>`;
-
-            for (const pm of ['efectivo', 'yape', 'tarjeta']) {
-                const sellers = by_payment[pm];
-                if (!sellers.length) continue;
-                html += `<div style="margin-bottom:24px;">
-                    <h2 style="font-size:15px;font-weight:600;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin-bottom:12px;">${payLabels[pm]}</h2>`;
-                for (const seller of sellers) {
-                    if (sellers.length > 1) html += `<p style="font-size:13px;font-weight:600;color:#475569;margin:8px 0 4px;">👤 ${seller.employee_name}</p>`;
-                    html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-                        <thead><tr style="background:#f8fafc;">
-                            <th style="text-align:left;padding:6px 8px;color:#64748b;">Producto</th>
-                            <th style="text-align:right;padding:6px 8px;color:#64748b;">Cant.</th>
-                            <th style="text-align:right;padding:6px 8px;color:#64748b;">Subtotal</th>
-                        </tr></thead><tbody>`;
-                    for (const p of seller.products) {
-                        html += `<tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:5px 8px;color:#334155;">${p.name}</td>
-                            <td style="padding:5px 8px;text-align:right;color:#334155;">${p.qty}</td>
-                            <td style="padding:5px 8px;text-align:right;font-weight:500;">S/ ${p.total.toFixed(2)}</td>
-                        </tr>`;
+            let ordersHTML = '';
+            if(!orders || orders.length === 0) {
+                ordersHTML = `<tr><td colspan="3" style="text-align:center;padding:16px;color:#64748b;">No hay órdenes en este rango.</td></tr>`;
+            } else {
+                for(const o of orders) {
+                    const pmLabel = o.payment_method === 'yape' ? 'Yape/Plin' : (o.payment_method === 'tarjeta' ? 'Tarjeta' : 'Efectivo');
+                    
+                    ordersHTML += `
+                        <tr class="order-row" style="background:#f8fafc;border-top:2px solid #e2e8f0;">
+                            <td colspan="2" style="padding:10px 8px;font-weight:600;color:#1e293b;">
+                                ${o.name} <span style="font-weight:normal;color:#64748b;font-size:12px;margin-left:8px;">(${pmLabel})</span>
+                            </td>
+                            <td style="padding:10px 8px;font-weight:700;text-align:right;color:#0f172a;">
+                                S/ ${parseFloat(o.amount_total).toFixed(2)}
+                            </td>
+                        </tr>
+                    `;
+                    
+                    for(const ln of o.lines) {
+                        ordersHTML += `
+                            <tr class="line-row" style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:6px 8px;padding-left:16px;color:#475569;">${ln.name}</td>
+                                <td style="padding:6px 8px;text-align:right;color:#475569;">${parseFloat(ln.qty).toFixed(2)}</td>
+                                <td style="padding:6px 8px;text-align:right;color:#475569;">S/ ${parseFloat(ln.total).toFixed(2)}</td>
+                            </tr>
+                        `;
                     }
-                    if (sellers.length > 1) {
-                        html += `<tr><td colspan="2" style="padding:6px 8px;font-weight:600;text-align:right;color:#475569;">Subtotal ${seller.employee_name}</td>
-                            <td style="padding:6px 8px;text-align:right;font-weight:700;">S/ ${seller.subtotal.toFixed(2)}</td></tr>`;
-                    }
-                    html += `</tbody></table>`;
                 }
-                html += `</div>`;
             }
 
-            // Resumen final
-            html += `<table style="width:100%;border-collapse:collapse;margin-top:16px;border-top:2px solid #e2e8f0;">
-                <tbody>
-                    <tr><td style="padding:8px;color:#475569;">💴 Efectivo</td><td style="text-align:right;padding:8px;font-weight:600;">S/ ${totals.efectivo.toFixed(2)}</td></tr>
-                    <tr><td style="padding:8px;color:#475569;">📱 Yape / Plin</td><td style="text-align:right;padding:8px;font-weight:600;">S/ ${totals.yape.toFixed(2)}</td></tr>
-                    <tr><td style="padding:8px;color:#475569;">💳 Tarjeta</td><td style="text-align:right;padding:8px;font-weight:600;">S/ ${totals.tarjeta.toFixed(2)}</td></tr>
-                    <tr style="background:#0f172a;"><td style="padding:10px;color:#fff;font-weight:700;font-size:14px;">TOTAL GENERAL</td>
-                        <td style="text-align:right;padding:10px;color:#fff;font-weight:800;font-size:16px;">S/ ${totals.grand_total.toFixed(2)}</td></tr>
-                </tbody>
-            </table></div>`;
+            let html = `
+            <div style="font-family:Inter,sans-serif;max-width:800px;margin:0 auto;color:#1e293b;">
+                <!-- Title and Date -->
+                <div style="text-align:center;margin-bottom:24px;">
+                    <h1 style="font-size:22px;font-weight:700;margin-bottom:4px;color:#0f172a;">Reporte de Ventas — Tecnigas</h1>
+                    <p style="color:#64748b;font-size:14px;margin:0;">Vendedor: <strong>${seller_name}</strong></p>
+                    <p style="color:#64748b;font-size:14px;margin:4px 0 0;">Fecha: ${currentPeriod.from} al ${currentPeriod.to} · Órdenes: ${total_orders}</p>
+                </div>
+
+                <!-- Summary Totals -->
+                <div class="summary-box" style="margin-bottom:24px;background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0;">
+                    <h2 style="font-size:16px;font-weight:600;margin:0 0 12px;border-bottom:1px solid #cbd5e1;padding-bottom:8px;color:#1e293b;">Resumen de Totales</h2>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:14px;">
+                        <span style="color:#475569;">Efectivo:</span> <strong style="color:#0f172a;">S/ ${parseFloat(totals.efectivo).toFixed(2)}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:14px;">
+                        <span style="color:#475569;">Yape / Plin:</span> <strong style="color:#0f172a;">S/ ${parseFloat(totals.yape).toFixed(2)}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:14px;">
+                        <span style="color:#475569;">Tarjeta:</span> <strong style="color:#0f172a;">S/ ${parseFloat(totals.tarjeta).toFixed(2)}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #cbd5e1;font-size:16px;">
+                        <span style="color:#1e293b;"><strong>Total General:</strong></span> <strong style="color:#0f172a;">S/ ${parseFloat(totals.grand_total).toFixed(2)}</strong>
+                    </div>
+                </div>
+
+                <!-- Orders List -->
+                <h2 style="font-size:16px;font-weight:600;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin-bottom:12px;color:#1e293b;">Detalle por Órdenes</h2>
+                
+                <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e2e8f0;">
+                    <thead>
+                        <tr style="background:#f1f5f9;border-bottom:2px solid #cbd5e1;">
+                            <th style="text-align:left;padding:8px;color:#475569;">Producto</th>
+                            <th style="text-align:right;padding:8px;color:#475569;width:80px;">Cant.</th>
+                            <th style="text-align:right;padding:8px;color:#475569;width:100px;">Precio Vendido</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${ordersHTML}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background:#0f172a;color:white;">
+                            <td colspan="2" style="padding:12px;font-weight:700;text-align:right;font-size:15px;">TOTAL FINAL</td>
+                            <td style="padding:12px;font-weight:700;text-align:right;font-size:15px;">S/ ${parseFloat(totals.grand_total).toFixed(2)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>`;
 
             document.getElementById('pdf-content').innerHTML = html;
+        }
+
+        function imprimirPDF() {
+            const contenido = document.getElementById('pdf-content').innerHTML;
+            const ventana = window.open('', '_blank', 'width=900,height=700');
+            ventana.document.write(`
+                <!DOCTYPE html>
+                <html lang="es">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Reporte de Ventas - Tecnigas</title>
+                    <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body {
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 12px;
+                            color: #1e293b;
+                            padding: 24px;
+                        }
+                        h1 { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+                        h2 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+                        p  { font-size: 12px; color: #475569; }
+                        .summary-box {
+                            background: #f8fafc;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 6px;
+                            padding: 12px;
+                            margin-bottom: 20px;
+                        }
+                        .summary-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 4px;
+                            font-size: 13px;
+                        }
+                        .summary-row.total {
+                            border-top: 1px solid #cbd5e1;
+                            margin-top: 6px;
+                            padding-top: 6px;
+                            font-weight: 700;
+                            font-size: 14px;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            font-size: 12px;
+                            margin-top: 8px;
+                        }
+                        th {
+                            background: #f1f5f9;
+                            padding: 7px 8px;
+                            text-align: left;
+                            color: #475569;
+                            font-weight: 600;
+                            border-bottom: 2px solid #cbd5e1;
+                        }
+                        th:last-child, td:last-child { text-align: right; }
+                        th:nth-child(2), td:nth-child(2) { text-align: right; }
+                        .order-row {
+                            background: #f8fafc;
+                            border-top: 2px solid #e2e8f0;
+                        }
+                        .order-row td {
+                            padding: 8px;
+                            font-weight: 600;
+                            color: #0f172a;
+                        }
+                        .line-row td {
+                            padding: 5px 8px 5px 18px;
+                            color: #475569;
+                            border-bottom: 1px solid #f1f5f9;
+                        }
+                        tfoot tr td {
+                            background: #0f172a;
+                            color: white;
+                            font-weight: 700;
+                            font-size: 13px;
+                            padding: 10px 8px;
+                            text-align: right;
+                        }
+                        tfoot tr td:first-child { text-align: right; }
+                        .header-center { text-align: center; margin-bottom: 20px; }
+                        .header-center p { margin-top: 4px; }
+                        @page { margin: 1.5cm; }
+                        @media print {
+                            body { padding: 0; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${contenido}
+                </body>
+                </html>
+            `);
+            ventana.document.close();
+            ventana.focus();
+            setTimeout(() => {
+                ventana.print();
+            }, 400);
         }
 
         function cerrarModal() {

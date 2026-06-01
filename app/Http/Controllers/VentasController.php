@@ -370,14 +370,13 @@ class VentasController extends Controller
         }
 
         $orders = $this->odoo->searchRead('pos.order', $domain,
-            ['id', 'amount_total', 'employee_id', 'user_id', 'lines'],
+            ['id', 'name', 'pos_reference', 'amount_total', 'employee_id', 'user_id', 'lines'],
             ['limit' => 5000]
         );
 
         if (empty($orders)) {
             return response()->json([
-                'products' => [], 'total_orders' => 0, 'total_amount' => 0,
-                'by_payment' => ['efectivo' => [], 'yape' => [], 'tarjeta' => []],
+                'orders' => [], 'total_orders' => 0,
                 'totals' => ['efectivo' => 0, 'yape' => 0, 'tarjeta' => 0, 'grand_total' => 0],
                 'seller_name' => $sellerName,
             ]);
@@ -432,56 +431,53 @@ class VentasController extends Controller
             ['limit' => 50000]
         );
 
-        $byPayment = ['efectivo' => [], 'yape' => [], 'tarjeta' => []];
-        $globalAgg = [];
-
+        $linesByOrder = [];
         foreach ($lines as $ln) {
             $pidData = $ln['product_id'] ?? false;
             if (!$pidData) continue;
-            [$pid, $pname] = [$pidData[0], $pidData[1]];
-            $oid       = $ln['order_id'];
-            $oid       = is_array($oid) ? $oid[0] : $oid;
-            $payMethod = $payMethodMap[$oid] ?? 'efectivo';
-            $empName   = $orderEmpMap[$oid] ?? 'Sin asignar';
-            $qty       = floatval($ln['qty'] ?? 0);
-            $total     = floatval($ln['price_subtotal_incl'] ?? 0);
-
-            if (!isset($byPayment[$payMethod][$empName])) $byPayment[$payMethod][$empName] = [];
-            if (!isset($byPayment[$payMethod][$empName][$pid])) $byPayment[$payMethod][$empName][$pid] = ['name' => $pname, 'qty' => 0.0, 'total' => 0.0];
-            $byPayment[$payMethod][$empName][$pid]['qty']   += $qty;
-            $byPayment[$payMethod][$empName][$pid]['total'] += $total;
-
-            if (!isset($globalAgg[$pid])) $globalAgg[$pid] = ['name' => $pname, 'qty' => 0.0, 'total' => 0.0];
-            $globalAgg[$pid]['qty']   += $qty;
-            $globalAgg[$pid]['total'] += $total;
-        }
-
-        $buildSellerList = function ($empGroup) {
-            $result = [];
-            foreach ($empGroup as $empName => $prodDict) {
-                $products = array_values(array_map(fn($v) => ['name' => $v['name'], 'qty' => round($v['qty'], 2), 'total' => round($v['total'], 2)], $prodDict));
-                usort($products, fn($a, $b) => $b['total'] <=> $a['total']);
-                $result[] = ['employee_name' => $empName, 'products' => $products, 'subtotal' => round(array_sum(array_column($products, 'total')), 2)];
+            $pname = $pidData[1];
+            
+            $oid = $ln['order_id'];
+            $oid = is_array($oid) ? $oid[0] : $oid;
+            
+            if (!isset($linesByOrder[$oid])) {
+                $linesByOrder[$oid] = [];
             }
-            return $result;
-        };
-
-        $byPaymentOut = [];
-        $totals = [];
-        foreach (['efectivo', 'yape', 'tarjeta'] as $pm) {
-            $byPaymentOut[$pm] = $buildSellerList($byPayment[$pm]);
-            $totals[$pm] = round(array_sum(array_column($byPaymentOut[$pm], 'subtotal')), 2);
+            $linesByOrder[$oid][] = [
+                'name'  => $pname,
+                'qty'   => floatval($ln['qty'] ?? 0),
+                'total' => floatval($ln['price_subtotal_incl'] ?? 0)
+            ];
         }
-        $totals['grand_total'] = round(array_sum([$totals['efectivo'], $totals['yape'], $totals['tarjeta']]), 2);
 
-        $globalProducts = array_values(array_map(fn($v) => ['name' => $v['name'], 'qty' => round($v['qty'], 2), 'total' => round($v['total'], 2)], $globalAgg));
-        usort($globalProducts, fn($a, $b) => $b['total'] <=> $a['total']);
+        $ordersOut = [];
+        $totals = ['efectivo' => 0, 'yape' => 0, 'tarjeta' => 0];
+
+        foreach ($orders as $o) {
+            $oid = $o['id'];
+            $pm = $payMethodMap[$oid] ?? 'efectivo';
+            $amount = floatval($o['amount_total'] ?? 0);
+            
+            if (isset($totals[$pm])) {
+                $totals[$pm] += $amount;
+            } else {
+                $totals['efectivo'] += $amount;
+            }
+
+            $ordersOut[] = [
+                'id' => $oid,
+                'name' => !empty($o['pos_reference']) ? $o['pos_reference'] : ($o['name'] ?? "Orden #$oid"),
+                'amount_total' => $amount,
+                'payment_method' => $pm,
+                'lines' => $linesByOrder[$oid] ?? [],
+            ];
+        }
+
+        $totals['grand_total'] = array_sum($totals);
 
         return response()->json([
-            'products'     => $globalProducts,
+            'orders'       => $ordersOut,
             'total_orders' => count($orders),
-            'total_amount' => round($totalAmount, 2),
-            'by_payment'   => $byPaymentOut,
             'totals'       => $totals,
             'seller_name'  => $sellerName,
         ]);
