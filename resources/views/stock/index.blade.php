@@ -68,11 +68,11 @@
                     <p class="text-xs text-gray-400">Última Sincronización</p>
                     <p class="text-sm font-semibold text-gray-600" id="sync-time-indicator">Cargando...</p>
                 </div>
-                <button onclick="refreshData()" class="flex items-center gap-2 bg-[#2a3f54] hover:bg-[#1e2f3f] text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition group" id="btn-sync">
+                <button onclick="refrescarStock()" class="flex items-center gap-2 bg-[#2a3f54] hover:bg-[#1e2f3f] text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition group" id="btn-sync">
                     <svg class="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="icon-sync">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"/>
                     </svg>
-                    <span>Sincronizar</span>
+                    <span>Actualizar Stock</span>
                 </button>
             </div>
         </div>
@@ -91,38 +91,14 @@
         </div>
 
         {{-- Layout Principal --}}
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            
-            {{-- Columna Lateral: Filtros por Categoría --}}
-            <div class="lg:col-span-1 space-y-4">
-                <div class="glass-card rounded-2xl p-5 shadow-sm">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-bold text-gray-800 text-sm uppercase tracking-wider">Categorías</h3>
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 8.293A1 1 0 013 7.586V4z"/>
-                        </svg>
-                    </div>
-
-                    {{-- Lista de Categorías --}}
-                    <div class="space-y-1" id="categories-container">
-                        {{-- Skeleton loading para categorías --}}
-                        <div class="animate-pulse space-y-2">
-                            <div class="h-9 bg-gray-200 rounded-xl"></div>
-                            <div class="h-9 bg-gray-200 rounded-xl"></div>
-                            <div class="h-9 bg-gray-200 rounded-xl"></div>
-                            <div class="h-9 bg-gray-200 rounded-xl"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Columna Derecha: Catálogo y Buscador --}}
-            <div class="lg:col-span-3 space-y-6">
+        <div>
+            {{-- Catálogo y Buscador --}}
+            <div class="space-y-6">
 
                 {{-- Panel Superior: Buscador y Filtros Rápidos --}}
                 <div class="glass-card rounded-2xl p-5 shadow-sm space-y-4">
                     
-                    {{-- Fila del Buscador y Selector de Vista --}}
+                    {{-- Fila del Buscador, Categoría y Selector de Vista --}}
                     <div class="flex flex-col sm:flex-row gap-3">
                         <div class="relative flex-1">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
@@ -136,6 +112,17 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
                             </button>
+                        </div>
+                        
+                        {{-- Filtro de Categoría (Datalist) --}}
+                        <div class="relative flex-1 max-w-[300px] min-w-[200px]">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
+                                </svg>
+                            </div>
+                            <input id="categInput" list="categList" onchange="onCategorySelect(this.value)" class="w-full pl-11 pr-3 py-3 rounded-xl border border-gray-200 focus:border-[#2a3f54] focus:ring focus:ring-[#2a3f54]/20 text-sm transition placeholder-gray-400 bg-white" placeholder="Buscar categoría..." autocomplete="off">
+                            <datalist id="categList"></datalist>
                         </div>
 
                         {{-- Selector de Vista (Grid/List) --}}
@@ -202,103 +189,140 @@
         </div>
     </div>
 
-    {{-- Script JavaScript Principal - SPA Lógica Completa --}}
+    {{-- Script JavaScript Principal - SPA Optimizada (3 endpoints) --}}
     <script>
-        // Variables globales del catálogo
-        let originalProducts = [];
-        let originalCategories = [];
-        let activeCategory = null;
-        let searchQuery = '';
-        let activeFilter = 'todos'; // todos, con_stock, critico, sin_stock
+        // ─── Estado Global (3 capas separadas) ────────────────────────────────
+        let catalogoCompleto   = [];   // datos estáticos del catálogo (nombre, precio, código…)
+        let originalCategories = [];   // lista de categorías
+        let stockActual        = {};   // { product_id: { almacen_qty, tienda_qty, qty_available, locations } }
+        let imagenesCache      = {};   // { product_id: base64 | null }
+        let resultadosFiltrados = [];  // productos filtrados actualmente visibles
+        const PAGE_SIZE = 100;         // máx cards en el DOM al mismo tiempo
+
+        let activeCategory  = null;
+        let searchQuery     = '';
+        let activeFilter    = 'todos'; // todos, con_stock, critico, sin_stock
         let currentViewMode = localStorage.getItem('stock_view_mode') || 'grid';
-        
+        let debounceTimer;
+
         // Rol del usuario actual para restricciones de negocio
-        const userRole = "{{ auth()->user()->role }}";
-        const isAdmin = {{ auth()->user()->isAdmin() ? 'true' : 'false' }};
+        const userRole  = "{{ auth()->user()->role }}";
+        const isAdmin   = {{ auth()->user()->isAdmin()   ? 'true' : 'false' }};
         const isAlmacen = {{ auth()->user()->isAlmacen() ? 'true' : 'false' }};
 
-        // Cache e IntersectionObserver para Lazy Loading
-        const imageCache = {}; 
-        const pendingImageQueue = new Set();
-        let imageFetchDebounce = null;
-
-        const imageLazyObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const imgEl = entry.target;
-                    const pId = imgEl.dataset.productId;
-                    if (pId) {
-                        requestLazyImage(pId, imgEl);
-                        imageLazyObserver.unobserve(imgEl);
-                    }
-                }
-            });
-        }, { rootMargin: '120px 0px' });
-
         document.addEventListener('DOMContentLoaded', () => {
-            // Inicializar estados iniciales de vista
             setViewStyle(currentViewMode);
-            // Cargar datos por primera vez
-            loadData(false);
+            inicializar();
+        });
+
+        // Buscador con debounce (elimina lag en 4000+ productos)
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            const btnClear = document.getElementById('btn-clear-search');
+            btnClear.classList.toggle('hidden', !searchQuery.trim());
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => aplicarFiltroYRender(), 300);
         });
 
         // =========================================================
-        // CARGA DE DATOS DE API (XML-RPC & CACHE)
+        // INICIALIZACIÓN — CARGA EN 3 FASES
         // =========================================================
-        async function loadData(forceRefresh = false) {
+        async function inicializar() {
             showLoading(true);
-            
-            const btnSync = document.getElementById('btn-sync');
-            const iconSync = document.getElementById('icon-sync');
-            if (forceRefresh) {
-                btnSync.disabled = true;
-                iconSync.classList.add('animate-spin');
+
+            // Fase 1: catálogo estático (caché 24h — muy rápido en visitas siguientes)
+            try {
+                const resCat = await fetch('/api/stock/catalogo');
+                const dataCat = await resCat.json();
+
+                if (!dataCat.success) {
+                    showToast('error', 'Error al cargar catálogo.');
+                    showLoading(false);
+                    return;
+                }
+
+                catalogoCompleto   = dataCat.products   || [];
+                originalCategories = dataCat.categories || [];
+            } catch (e) {
+                showToast('error', 'Sin conexión al servidor.');
+                showLoading(false);
+                return;
             }
 
+            // Fase 2: cantidades de stock (caché 3 min)
+            await actualizarCantidades(false);
+
+            // Renderizar con stock ya integrado
+            renderCategoriesList();
+            aplicarFiltroYRender();
+            showLoading(false);
+
+            // Fase 3: imágenes en background (no bloquea la UI)
+            cargarImagenesBackground();
+        }
+
+        /**
+         * Descarga solo cantidades desde /api/stock/cantidades
+         * Si forceRefresh=true, invalida caché servidor (3 min).
+         */
+        async function actualizarCantidades(forceRefresh = false) {
             try {
-                const response = await fetch(`/api/stock/productos?refresh=${forceRefresh}`);
-                const data = await response.json();
-
+                const res  = await fetch(`/api/stock/cantidades${forceRefresh ? '?refresh=true' : ''}`);
+                const data = await res.json();
                 if (data.success) {
-                    originalProducts = data.products || [];
-                    originalCategories = data.categories || [];
-
-                    // Actualizar UI
+                    stockActual = data.stock || {};
                     document.getElementById('sync-time-indicator').innerText = data.cached_at || '--:--';
-                    
-                    // Banner offline
                     const offlineBanner = document.getElementById('offline-banner');
-                    if (data.offline) {
-                        offlineBanner.classList.remove('hidden');
-                    } else {
-                        offlineBanner.classList.add('hidden');
-                    }
-
-                    renderCategoriesList();
-                    filterAndRenderCatalog();
-                } else {
-                    showToast('error', 'Error al obtener el catálogo: ' + (data.error_msg || 'Error desconocido'));
+                    offlineBanner.classList.toggle('hidden', !data.offline);
                 }
-            } catch (error) {
-                showToast('error', 'Error de red al consultar productos.');
-            } finally {
-                showLoading(false);
-                if (forceRefresh) {
-                    btnSync.disabled = false;
-                    iconSync.classList.remove('animate-spin');
-                }
+            } catch (e) {
+                console.warn('No se pudo actualizar stock:', e);
             }
         }
 
-        function refreshData() {
-            loadData(true);
+        /**
+         * Botón "Actualizar Stock": solo recarga cantidades (sin re-bajar catálogo ni imágenes).
+         * Actualiza valores en las cards ya visibles sin re-renderizar todo.
+         */
+        async function refrescarStock() {
+            const btn  = document.getElementById('btn-sync');
+            const icon = document.getElementById('icon-sync');
+            btn.disabled = true;
+            icon.classList.add('animate-spin');
+
+            await actualizarCantidades(true);
+            // Actualizar qtys en DOM sin re-render completo
+            actualizarQtysEnDOM();
+
+            btn.disabled = false;
+            icon.classList.remove('animate-spin');
+            showToast('success', 'Stock actualizado correctamente.');
+        }
+
+        /**
+         * Actualiza solo los valores de cantidad en las cards ya renderizadas.
+         * Evita re-renderizar 100 cards cuando solo cambian los números.
+         */
+        function actualizarQtysEnDOM() {
+            document.querySelectorAll('.producto-card[data-product-id]').forEach(card => {
+                const id    = parseInt(card.dataset.productId);
+                const stock = stockActual[id];
+                if (!stock) return;
+
+                const almacenEl = card.querySelector('[data-qty="almacen"]');
+                const tiendaEl  = card.querySelector('[data-qty="tienda"]');
+                const totalEl   = card.querySelector('[data-qty="total"]');
+                if (almacenEl) almacenEl.textContent = stock.almacen_qty  + ' und';
+                if (tiendaEl)  tiendaEl.textContent  = stock.tienda_qty   + ' und';
+                if (totalEl)   totalEl.textContent   = stock.qty_available + ' und';
+            });
         }
 
         function showLoading(isLoading) {
             const skeleton = document.getElementById('products-skeleton');
-            const grid = document.getElementById('products-grid');
-            const list = document.getElementById('products-list');
-            const empty = document.getElementById('empty-state');
+            const grid     = document.getElementById('products-grid');
+            const list     = document.getElementById('products-list');
+            const empty    = document.getElementById('empty-state');
 
             if (isLoading) {
                 skeleton.classList.remove('hidden');
@@ -315,70 +339,53 @@
         // RENDERS DE COMPONENTES
         // =========================================================
 
-        // Renderiza el árbol/lista de Categorías
         function renderCategoriesList() {
-            const container = document.getElementById('categories-container');
-            container.innerHTML = '';
+            const datalist = document.getElementById('categList');
+            if (!datalist) return;
+            datalist.innerHTML = '<option value="Todas"></option>';
 
-            // 1. Añadir píldora "Todas"
-            const totalProductsCount = originalProducts.length;
-            const allPill = document.createElement('button');
-            allPill.className = `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-left ${activeCategory === null ? 'active-category-pill shadow-sm font-bold' : 'text-gray-600 hover:bg-gray-100'}`;
-            allPill.onclick = () => selectCategory(null);
-            allPill.innerHTML = `
-                <span class="truncate">Todas las Categorías</span>
-                <span class="text-xs px-2.5 py-0.5 rounded-lg shrink-0 ${activeCategory === null ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 font-bold'}">${totalProductsCount}</span>
-            `;
-            container.appendChild(allPill);
-
-            // 2. Agrupar conteo de productos por categoría activa
             const countsMap = {};
-            originalProducts.forEach(p => {
+            catalogoCompleto.forEach(p => {
                 countsMap[p.categ_id] = (countsMap[p.categ_id] || 0) + 1;
             });
 
-            // 3. Renderizar cada categoría
             originalCategories.forEach(cat => {
                 const count = countsMap[cat.id] || 0;
-                if (count === 0) return; // ocultar vacías
+                if (count === 0) return;
 
-                const pill = document.createElement('button');
-                pill.className = `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-left mt-1 ${activeCategory === cat.id ? 'active-category-pill shadow-sm font-bold' : 'text-gray-600 hover:bg-gray-100'}`;
-                pill.onclick = () => selectCategory(cat.id);
-                pill.innerHTML = `
-                    <span class="truncate pr-2">${cat.name}</span>
-                    <span class="text-xs px-2.5 py-0.5 rounded-lg shrink-0 ${activeCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 font-bold'}">${count}</span>
-                `;
-                container.appendChild(pill);
+                const opt = document.createElement('option');
+                opt.value = cat.name;
+                datalist.appendChild(opt);
             });
         }
 
-        // Ejecuta filtros y renderiza Grid o Lista de productos
-        function filterAndRenderCatalog() {
-            // Filtrar productos
-            let filtered = originalProducts.filter(p => {
-                // Filtro de categoría
-                if (activeCategory !== null && p.categ_id !== activeCategory) {
-                    return false;
-                }
+        /**
+         * Aplica todos los filtros activos sobre catalogoCompleto y renderiza.
+         * Limita el DOM a PAGE_SIZE cards para no saturar el navegador.
+         */
+        function aplicarFiltroYRender() {
+            const q = searchQuery.trim().toLowerCase();
 
-                // Filtro rápido
-                if (activeFilter === 'con_stock' && p.qty_available <= 0) {
-                    return false;
-                }
-                if (activeFilter === 'sin_stock' && p.qty_available > 0) {
-                    return false;
-                }
+            let filtered = catalogoCompleto.filter(p => {
+                // Filtro de categoría
+                if (activeCategory !== null && p.categ_id !== activeCategory) return false;
+
+                // Leer stock del mapa separado
+                const stock = stockActual[p.id] || { almacen_qty: 0, tienda_qty: 0, qty_available: 0 };
+
+                // Filtros rápidos
+                if (activeFilter === 'con_stock' && stock.qty_available <= 0) return false;
+                if (activeFilter === 'sin_stock' && stock.qty_available > 0)  return false;
                 if (activeFilter === 'critico') {
-                    const isCritico = p.almacen_qty <= 0 || p.tienda_qty <= 0 || p.qty_available <= 5;
+                    const isCritico = stock.almacen_qty <= 0 || stock.tienda_qty <= 0 || stock.qty_available <= 5;
                     if (!isCritico) return false;
                 }
 
-                // Filtro de búsqueda fuzzy
-                if (searchQuery.trim() !== '') {
-                    const score = matchProductScore(p, searchQuery);
+                // Búsqueda (4 niveles de score)
+                if (q) {
+                    const score = matchProductScore(p, q);
                     if (score === 0) return false;
-                    p._search_score = score; // almacenar peso para ordenamiento
+                    p._search_score = score;
                 } else {
                     p._search_score = 0;
                 }
@@ -386,17 +393,18 @@
                 return true;
             });
 
-            // Ordenar por nivel de búsqueda (los exactos arriba)
-            if (searchQuery.trim() !== '') {
+            // Ordenar
+            if (q) {
                 filtered.sort((a, b) => b._search_score - a._search_score);
             } else {
-                // Ordenar alfabéticamente por defecto
                 filtered.sort((a, b) => a.name.localeCompare(b.name));
             }
 
+            resultadosFiltrados = filtered;
+
             const gridContainer = document.getElementById('products-grid');
             const listContainer = document.getElementById('products-list');
-            const emptyState = document.getElementById('empty-state');
+            const emptyState    = document.getElementById('empty-state');
 
             gridContainer.innerHTML = '';
             listContainer.innerHTML = '';
@@ -405,25 +413,38 @@
                 gridContainer.classList.add('hidden');
                 listContainer.classList.add('hidden');
                 emptyState.classList.remove('hidden');
+                actualizarContador(0, 0);
                 return;
-            } else {
-                emptyState.classList.add('hidden');
             }
 
-            // Renderizar vistas
-            filtered.forEach(p => {
-                // Render en Grid
+            emptyState.classList.add('hidden');
+
+            // Renderizar solo PAGE_SIZE cards (no saturar DOM con 4000+ nodos)
+            const pagina = filtered.slice(0, PAGE_SIZE);
+            pagina.forEach(p => {
                 gridContainer.appendChild(createGridCard(p));
-                // Render en Lista
                 listContainer.appendChild(createListRow(p));
             });
 
-            // Activar Observador de Lazy Loading
-            document.querySelectorAll('.lazy-stock-img').forEach(img => {
-                imageLazyObserver.observe(img);
-            });
-
+            actualizarContador(pagina.length, filtered.length);
             setViewStyle(currentViewMode);
+        }
+
+        // Helper: muestra "Mostrando X de Y" en el header
+        function actualizarContador(visible, total) {
+            let el = document.getElementById('contador-resultados');
+            if (!el) {
+                el = document.createElement('span');
+                el.id = 'contador-resultados';
+                el.className = 'text-xs text-gray-400 ml-2';
+                const h1 = document.querySelector('h1');
+                if (h1) h1.appendChild(el);
+            }
+            if (total > visible) {
+                el.textContent = `— Mostrando ${visible} de ${total} productos`;
+            } else {
+                el.textContent = total > 0 ? `— ${total} productos` : '';
+            }
         }
 
         // =========================================================
@@ -431,25 +452,36 @@
         // =========================================================
 
         function createGridCard(p) {
+            const stock = stockActual[p.id] || { almacen_qty: 0, tienda_qty: 0, qty_available: 0, locations: [] };
+            const img   = imagenesCache[p.id];
+
             const card = document.createElement('div');
-            card.className = 'bg-white rounded-2xl border-2 border-gray-200 overflow-hidden flex flex-col product-card transition-all duration-300 grid-item-fade relative';
-            
-            // Badge de categoría
-            const tagCritico = (p.almacen_qty <= 0 || p.tienda_qty <= 0 || p.qty_available <= 5)
+            card.className = 'bg-white rounded-2xl border-2 border-gray-200 overflow-hidden flex flex-col product-card transition-all duration-300 grid-item-fade relative producto-card';
+            card.dataset.productId = p.id;
+
+            const tagCritico = (stock.almacen_qty <= 0 || stock.tienda_qty <= 0 || stock.qty_available <= 5)
                 ? `<span class="absolute top-3 left-3 bg-red-500 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full z-10 animate-pulse">Crítico</span>`
                 : '';
 
-            // Habilitar visualización de costo solo para Admin / Almacén (Regla de negocio)
             const showCostInfo = (isAdmin || isAlmacen)
                 ? `<p class="text-xs text-gray-400 mt-0.5">Costo: S/ ${p.standard_price.toFixed(2)}</p>`
                 : '';
 
+            const imgContent = img
+                ? `<img src="data:image/png;base64,${img}" class="w-full h-full object-contain" alt="${p.name}">`
+                : `<div class="spinner absolute w-6 h-6 border-3 border-gray-300 border-t-[#2a3f54] rounded-full animate-spin"></div>
+                   <img data-product-id="${p.id}" class="w-full h-full object-contain opacity-0 transition-opacity duration-300 lazy-stock-img" src="" alt="${p.name}">`;
+
+            const qtyColorTotal  = stock.qty_available > 5 ? 'text-gray-800' : (stock.qty_available > 0 ? 'text-orange-500' : 'text-red-500');
+            const qtyColorAlmacen = stock.almacen_qty > 0 ? 'text-slate-800' : 'text-red-500';
+            const qtyColorTienda  = stock.tienda_qty  > 0 ? 'text-blue-700'  : 'text-red-500';
+            const warnTienda = stock.tienda_qty <= 0
+                ? `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`
+                : '';
+
             card.innerHTML = `
                 ${tagCritico}
-                <div class="product-image-container h-44 shrink-0">
-                    <div class="spinner absolute w-6 h-6 border-3 border-gray-300 border-t-[#2a3f54] rounded-full animate-spin"></div>
-                    <img data-product-id="${p.id}" class="w-full h-full object-contain opacity-0 transition-opacity duration-300 lazy-stock-img" src="" alt="${p.name}">
-                </div>
+                <div class="product-image-container h-44 shrink-0">${imgContent}</div>
                 <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
                     <div class="space-y-1">
                         <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full uppercase tracking-wide inline-block">${p.categ_name}</span>
@@ -459,7 +491,6 @@
                             ${p.barcode ? createCopyableBadge('EAN', p.barcode) : ''}
                         </div>
                     </div>
-
                     <div class="border-t border-gray-100 pt-3">
                         <div class="flex justify-between items-center">
                             <div>
@@ -469,38 +500,26 @@
                             </div>
                             <div class="text-right">
                                 <p class="text-xs text-gray-400 font-semibold">Total Stock</p>
-                                <p class="text-lg font-bold ${p.qty_available > 5 ? 'text-gray-800' : (p.qty_available > 0 ? 'text-orange-500' : 'text-red-500')}">${p.qty_available} und</p>
+                                <p class="text-lg font-bold ${qtyColorTotal}" data-qty="total">${stock.qty_available} und</p>
                             </div>
                         </div>
-
-                        {{-- Ubicaciones Detalladas --}}
                         <div class="grid grid-cols-2 gap-2 mt-3 text-xs pt-1.5 border-t border-dashed border-gray-100">
                             <div class="bg-slate-50 border border-slate-200/60 p-2 rounded-xl flex flex-col justify-center">
                                 <span class="text-gray-400 font-semibold text-[10px] uppercase">Almacén</span>
-                                <span class="text-sm font-bold ${p.almacen_qty > 0 ? 'text-slate-800' : 'text-red-500'}">${p.almacen_qty} und</span>
+                                <span class="text-sm font-bold ${qtyColorAlmacen}" data-qty="almacen">${stock.almacen_qty} und</span>
                             </div>
                             <div class="bg-blue-50/50 border border-blue-200/40 p-2 rounded-xl flex flex-col justify-center">
                                 <span class="text-gray-400 font-semibold text-[10px] uppercase">Tienda POS</span>
-                                <span class="text-sm font-bold ${p.tienda_qty > 0 ? 'text-blue-700' : 'text-red-500 flex items-center gap-0.5'}">
-                                    ${p.tienda_qty <= 0 ? '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' : ''}
-                                    ${p.tienda_qty} und
-                                </span>
+                                <span class="text-sm font-bold flex items-center gap-0.5 ${qtyColorTienda}" data-qty="tienda">${warnTienda}${stock.tienda_qty} und</span>
                             </div>
                         </div>
-
-                        {{-- Botón Detalles Expandidos --}}
                         <button onclick="toggleDetails(this, ${p.id})" class="w-full text-center text-xs text-gray-500 hover:text-[#2a3f54] font-semibold mt-3 pt-2 border-t border-gray-50 flex items-center justify-center gap-1">
                             <span>Ver ubicaciones detalladas</span>
                             <svg class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                         </button>
-                        
-                        {{-- Panel Expandido Oculto --}}
                         <div class="hidden mt-3 p-3 bg-gray-50 rounded-xl text-xs space-y-1.5 border border-gray-100" id="details-${p.id}">
-                            <p class="font-bold text-gray-700 border-b border-gray-200 pb-1 flex justify-between">
-                                <span>Ubicaciones Odoo</span>
-                                <span>Cantidad</span>
-                            </p>
-                            ${renderDetailLocations(p.locations)}
+                            <p class="font-bold text-gray-700 border-b border-gray-200 pb-1 flex justify-between"><span>Ubicaciones Odoo</span><span>Cantidad</span></p>
+                            ${renderDetailLocations(stock.locations)}
                         </div>
                     </div>
                 </div>
@@ -509,18 +528,28 @@
         }
 
         function createListRow(p) {
+            const stock = stockActual[p.id] || { almacen_qty: 0, tienda_qty: 0, qty_available: 0, locations: [] };
+            const img   = imagenesCache[p.id];
+
             const row = document.createElement('div');
-            row.className = 'bg-white rounded-2xl border-2 border-gray-200 overflow-hidden flex flex-col md:flex-row items-stretch md:items-center p-4 gap-4 product-card transition-all duration-300 relative grid-item-fade';
+            row.className = 'bg-white rounded-2xl border-2 border-gray-200 overflow-hidden flex flex-col md:flex-row items-stretch md:items-center p-4 gap-4 product-card transition-all duration-300 relative grid-item-fade producto-card';
+            row.dataset.productId = p.id;
 
             const showCostInfo = (isAdmin || isAlmacen)
                 ? `<span class="text-xs text-gray-400 block">Costo: S/ ${p.standard_price.toFixed(2)}</span>`
                 : '';
 
+            const imgContent = img
+                ? `<img src="data:image/png;base64,${img}" class="w-full h-full object-contain" alt="${p.name}">`
+                : `<div class="spinner absolute w-5 h-5 border-2 border-gray-300 border-t-[#2a3f54] rounded-full animate-spin"></div>
+                   <img data-product-id="${p.id}" class="w-full h-full object-contain opacity-0 transition-opacity duration-300 lazy-stock-img" src="" alt="${p.name}">`;
+
+            const qtyColorTotal   = stock.qty_available > 5 ? 'text-gray-800' : (stock.qty_available > 0 ? 'text-orange-500' : 'text-red-500');
+            const qtyColorAlmacen = stock.almacen_qty > 0 ? 'text-slate-800' : 'text-red-500';
+            const qtyColorTienda  = stock.tienda_qty  > 0 ? 'text-blue-700'  : 'text-red-500';
+
             row.innerHTML = `
-                <div class="product-image-container w-24 h-24 rounded-xl border border-gray-100 shrink-0 self-center">
-                    <div class="spinner absolute w-5 h-5 border-2 border-gray-300 border-t-[#2a3f54] rounded-full animate-spin"></div>
-                    <img data-product-id="${p.id}" class="w-full h-full object-contain opacity-0 transition-opacity duration-300 lazy-stock-img" src="" alt="${p.name}">
-                </div>
+                <div class="product-image-container w-24 h-24 rounded-xl border border-gray-100 shrink-0 self-center">${imgContent}</div>
                 <div class="flex-1 min-w-0 space-y-1">
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wide shrink-0">${p.categ_name}</span>
@@ -530,40 +559,29 @@
                         </div>
                     </div>
                     <h4 class="font-bold text-gray-800 text-sm leading-snug truncate" title="${p.name}">${p.name}</h4>
-                    
-                    {{-- Ubicaciones Básicas --}}
                     <div class="flex gap-3 text-xs text-gray-500 pt-1">
-                        <span>Almacén: <strong class="${p.almacen_qty > 0 ? 'text-slate-800' : 'text-red-500'}">${p.almacen_qty} und</strong></span>
-                        <span class="flex items-center gap-0.5">Tienda: <strong class="${p.tienda_qty > 0 ? 'text-blue-700' : 'text-red-500'}">${p.tienda_qty} und</strong></span>
+                        <span>Almacén: <strong class="${qtyColorAlmacen}" data-qty="almacen">${stock.almacen_qty} und</strong></span>
+                        <span>Tienda: <strong class="${qtyColorTienda}" data-qty="tienda">${stock.tienda_qty} und</strong></span>
                     </div>
                 </div>
-
-                {{-- Precios y Total Stock --}}
                 <div class="flex items-center justify-between md:justify-end gap-6 md:gap-8 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100 shrink-0">
                     <div class="text-left md:text-right">
                         <span class="text-xs text-gray-400 font-semibold block leading-none">Precio Venta</span>
                         <strong class="text-lg font-bold text-[#2a3f54] block mt-1">S/ ${p.list_price.toFixed(2)}</strong>
                         ${showCostInfo}
                     </div>
-
                     <div class="text-right">
                         <span class="text-xs text-gray-400 font-semibold block leading-none">Total Stock</span>
-                        <strong class="text-lg font-bold block mt-1 ${p.qty_available > 5 ? 'text-gray-800' : (p.qty_available > 0 ? 'text-orange-500' : 'text-red-500')}">${p.qty_available} und</strong>
-                        
+                        <strong class="text-lg font-bold block mt-1 ${qtyColorTotal}" data-qty="total">${stock.qty_available} und</strong>
                         <button onclick="toggleDetails(this, ${p.id}, true)" class="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-0.5 justify-end mt-1">
                             <span>Ubicaciones</span>
                             <svg class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                         </button>
                     </div>
                 </div>
-
-                {{-- Panel Expandible en Lista --}}
                 <div class="hidden w-full md:absolute md:top-full md:left-0 md:z-10 mt-2 p-3 bg-gray-50 rounded-xl text-xs space-y-1.5 border border-gray-100 shadow-md" id="details-list-${p.id}">
-                    <p class="font-bold text-gray-700 border-b border-gray-200 pb-1 flex justify-between">
-                        <span>Ubicaciones de Stock Odoo 18</span>
-                        <span>Cantidad Física</span>
-                    </p>
-                    ${renderDetailLocations(p.locations)}
+                    <p class="font-bold text-gray-700 border-b border-gray-200 pb-1 flex justify-between"><span>Ubicaciones de Stock Odoo 18</span><span>Cantidad Física</span></p>
+                    ${renderDetailLocations(stock.locations)}
                 </div>
             `;
             return row;
@@ -600,16 +618,18 @@
         // ACCIONES DE FILTRO E INTERFACES
         // =========================================================
 
-        function selectCategory(catId) {
-            activeCategory = catId;
-            renderCategoriesList();
-            filterAndRenderCatalog();
+        function onCategorySelect(val) {
+            if (!val || val === 'Todas' || val === 'All') {
+                activeCategory = null;
+            } else {
+                const cat = originalCategories.find(c => c.name === val);
+                activeCategory = cat ? cat.id : null;
+            }
+            aplicarFiltroYRender();
         }
 
         function changeFilter(filterName) {
             activeFilter = filterName;
-            
-            // Estilos activos
             const filters = ['todos', 'con_stock', 'critico', 'sin_stock'];
             filters.forEach(f => {
                 const btn = document.getElementById('filter-' + f);
@@ -619,27 +639,23 @@
                     btn.className = 'px-3.5 py-1.5 rounded-full font-semibold transition bg-gray-100 text-gray-600 hover:bg-gray-200';
                 }
             });
-
-            filterAndRenderCatalog();
+            aplicarFiltroYRender();
         }
 
         function onSearchInput(val) {
+            // Fallback para el atributo oninput= en el HTML (el listener con debounce es el principal)
             searchQuery = val;
             const btnClear = document.getElementById('btn-clear-search');
-            if (val.trim() !== '') {
-                btnClear.classList.remove('hidden');
-            } else {
-                btnClear.classList.add('hidden');
-            }
-
-            // Filtrado inmediato al escribir
-            filterAndRenderCatalog();
+            btnClear.classList.toggle('hidden', !val.trim());
         }
 
         function clearSearch() {
             const input = document.getElementById('search-input');
             input.value = '';
-            onSearchInput('');
+            searchQuery  = '';
+            document.getElementById('btn-clear-search').classList.add('hidden');
+            clearTimeout(debounceTimer);
+            aplicarFiltroYRender();
         }
 
         function changeView(mode) {
@@ -658,7 +674,7 @@
                 btnGrid.className = 'p-2.5 rounded-lg transition bg-[#2a3f54] text-white shadow-sm';
                 btnList.className = 'p-2.5 rounded-lg transition text-gray-500 hover:bg-gray-200';
                 
-                if (originalProducts.length > 0) {
+                if (catalogoCompleto.length > 0) {
                     gridContainer.classList.remove('hidden');
                     listContainer.classList.add('hidden');
                 }
@@ -666,7 +682,7 @@
                 btnList.className = 'p-2.5 rounded-lg transition bg-[#2a3f54] text-white shadow-sm';
                 btnGrid.className = 'p-2.5 rounded-lg transition text-gray-500 hover:bg-gray-200';
                 
-                if (originalProducts.length > 0) {
+                if (catalogoCompleto.length > 0) {
                     listContainer.classList.remove('hidden');
                     gridContainer.classList.add('hidden');
                 }
@@ -740,64 +756,47 @@
         }
 
         // =========================================================
-        // DESCARGA LAZY POR LOTES (LAZY LOADING DE IMÁGENES)
+        // CARGA DE IMÁGENES EN BACKGROUND (no bloquea la UI)
         // =========================================================
-        function requestLazyImage(pId, imgEl) {
-            // Verificar si ya está en caché en memoria
-            if (imageCache[pId]) {
-                imgEl.src = 'data:image/png;base64,' + imageCache[pId];
-                imgEl.classList.remove('opacity-0');
-                imgEl.parentElement.querySelector('.spinner')?.remove();
-                return;
-            }
+        async function cargarImagenesBackground() {
+            // Solo pedir imágenes que no están en caché local
+            const idsQueNecesitan = catalogoCompleto
+                .filter(p => imagenesCache[p.id] === undefined)
+                .map(p => p.id);
 
-            // Añadir a la cola de lote asíncrono
-            pendingImageQueue.add({ pId, imgEl });
+            // Procesar en batches de 50
+            for (let i = 0; i < idsQueNecesitan.length; i += 50) {
+                const batch = idsQueNecesitan.slice(i, i + 50);
+                try {
+                    const res  = await fetch(`/api/stock/imagenes?ids=${batch.join(',')}`);
+                    const data = await res.json();
+                    if (data.success && data.images) {
+                        Object.entries(data.images).forEach(([id, img]) => {
+                            const numId = parseInt(id);
+                            imagenesCache[numId] = img || null;
 
-            if (imageFetchDebounce) clearTimeout(imageFetchDebounce);
-            imageFetchDebounce = setTimeout(processLazyImageQueue, 250);
-        }
-
-        async function processLazyImageQueue() {
-            if (pendingImageQueue.size === 0) return;
-
-            const itemsArray = Array.from(pendingImageQueue).slice(0, 50);
-            itemsArray.forEach(item => pendingImageQueue.delete(item));
-
-            const ids = itemsArray.map(item => item.pId).join(',');
-
-            try {
-                const response = await fetch(`/api/stock/imagenes?ids=${ids}`);
-                const result = await response.json();
-
-                if (result.success && result.images) {
-                    itemsArray.forEach(item => {
-                        const base64 = result.images[item.pId];
-                        const img = item.imgEl;
-                        const spinner = img.parentElement.querySelector('.spinner');
-
-                        if (base64) {
-                            imageCache[item.pId] = base64;
-                            img.src = 'data:image/png;base64,' + base64;
-                        } else {
-                            // Si no hay imagen en Odoo, inyectar SVG box placeholder premium
-                            img.style.display = 'none';
-                            const svgPlaceholder = document.createElement('div');
-                            svgPlaceholder.className = 'w-10 h-10 text-gray-300';
-                            svgPlaceholder.innerHTML = `
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                </svg>
-                            `;
-                            img.parentElement.appendChild(svgPlaceholder);
-                        }
-
-                        img.classList.remove('opacity-0');
-                        spinner?.remove();
-                    });
+                            // Actualizar placeholders ya visibles en el DOM
+                            document.querySelectorAll(`.lazy-stock-img[data-product-id="${id}"]`).forEach(imgEl => {
+                                const spinner = imgEl.parentElement.querySelector('.spinner');
+                                if (img) {
+                                    imgEl.src = 'data:image/png;base64,' + img;
+                                    imgEl.classList.remove('opacity-0');
+                                } else {
+                                    imgEl.style.display = 'none';
+                                    const ph = document.createElement('div');
+                                    ph.className = 'w-10 h-10 text-gray-300';
+                                    ph.innerHTML = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>`;
+                                    imgEl.parentElement.appendChild(ph);
+                                }
+                                spinner?.remove();
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.warn(`Error cargando imágenes batch ${i}:`, e);
                 }
-            } catch (error) {
-                console.error("Error cargando lote de imágenes diferidas", error);
+                // Pausa entre batches para no saturar el servidor
+                await new Promise(r => setTimeout(r, 200));
             }
         }
 

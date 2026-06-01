@@ -81,9 +81,10 @@ Route::post('/traslado/{id}/confirm', [TrasladoController::class, 'confirm']);
 Route::put('/traslado/{id}',       [TrasladoController::class, 'update']);
 Route::delete('/traslado/{id}',    [TrasladoController::class, 'destroy']);
 
-// stock
-Route::get('/stock/productos', [App\Http\Controllers\StockController::class, 'productos']);
-Route::get('/stock/imagenes',  [App\Http\Controllers\StockController::class, 'imagenes']);
+// stock (optimizado — catálogo 24h, cantidades 3min, imágenes 7d por producto)
+Route::get('/stock/catalogo',   [App\Http\Controllers\StockController::class, 'catalogo']);
+Route::get('/stock/cantidades', [App\Http\Controllers\StockController::class, 'cantidades']);
+Route::get('/stock/imagenes',   [App\Http\Controllers\StockController::class, 'imagenes']);
 
 // Orden y Limpieza
 Route::get('/limpieza/empleados', [LimpiezaController::class, 'empleados']);
