@@ -97,8 +97,8 @@
         </div>
 
         {{-- Tabla ranking --}}
-        <div class="bg-white rounded-2xl shadow overflow-hidden" id="tabla-container">
-            <table class="w-full text-sm" id="tabla-ranking">
+        <div class="bg-white rounded-2xl shadow overflow-x-auto" id="tabla-container">
+            <table class="w-full text-sm whitespace-nowrap" id="tabla-ranking">
                 <thead class="bg-gray-50 border-b">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
