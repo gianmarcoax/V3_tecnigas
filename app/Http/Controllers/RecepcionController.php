@@ -346,7 +346,7 @@ class RecepcionController extends Controller
         // Formato idéntico a plantilla "Imprimir 2.0" de Odoo 18:
         // Columnas: Cantidad a la mano | Nombre | Precio de venta | Referencia interna
 
-        $filename = '010';
+        $filename = '010.xlsx';
         $filepath = storage_path('app/public/' . $filename);
 
         // Crear directorio si no existe
