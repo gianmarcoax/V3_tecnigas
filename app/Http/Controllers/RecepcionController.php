@@ -311,35 +311,19 @@ class RecepcionController extends Controller
     // =========================================================
     public function exportBartender(Request $request)
     {
-        $ids = $request->input('ids', []); // IDs de recepcion_items
+        $itemsData = $request->input('items', []);
 
-        // Convertir string a array si es necesario (ej: "1,2,3" → [1,2,3])
-        if (is_string($ids)) {
-            $ids = array_filter(array_map('intval', explode(',', $ids)));
-        }
-
-        // Asegurar que sea array
-        if (!is_array($ids)) {
-            $ids = [$ids];
-        }
-
-        if (empty($ids)) {
+        if (empty($itemsData)) {
             return response()->json([
                 'success' => false,
                 'error'   => 'No se especificaron items para exportar',
             ], 400);
         }
 
-        // Obtener items con sus datos
-        $items = RecepcionItem::whereIn('id', $ids)
-            ->with('recepcion')
-            ->get();
-
-        if ($items->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'error'   => 'No se encontraron items',
-            ], 404);
+        // Convertir los arrays de items a objetos para mantener compatibilidad con generateBartenderExcel
+        $items = [];
+        foreach ($itemsData as $itemData) {
+            $items[] = (object) $itemData;
         }
 
         // Generar XLSX real compatible con BarTender (Office Open XML)

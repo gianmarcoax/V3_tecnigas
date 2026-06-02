@@ -62,7 +62,7 @@ Route::get('/recepcion/historial',    [RecepcionController::class, 'historial'])
 Route::get('/recepcion/productos',    [RecepcionController::class, 'productos']);
 Route::get('/recepcion/proveedores',  [RecepcionController::class, 'proveedores']);
 Route::get('/recepcion/ubicaciones',  [RecepcionController::class, 'ubicaciones']);
-Route::get('/recepcion/export-bartender', [RecepcionController::class, 'exportBartender']);
+Route::post('/recepcion/export-bartender', [RecepcionController::class, 'exportBartender']);
 Route::get('/recepcion/imagenes',         [RecepcionController::class, 'imagenes']);
 Route::get('/recepcion/{id}',             [RecepcionController::class, 'show']);
 Route::post('/recepcion',             [RecepcionController::class, 'store']);

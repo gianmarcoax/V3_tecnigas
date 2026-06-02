@@ -751,25 +751,7 @@ document.getElementById('btnPrintExcel').addEventListener('click', async () => {
   lucide.createIcons({ root: btn });
 
   try {
-    // Primero guardar la recepción para obtener IDs de items
-    const locationDestId = parseInt(document.getElementById('locationSelect').value) || 0;
-    if (!locationDestId) {
-      toast('Selecciona el almacén de destino primero', 'error', 'map-pin');
-      return;
-    }
-
-    const subtotal = receptionRows.reduce((s, r) => s + (r.qty * r.costo), 0);
-    const igv      = subtotal * 0.18;
-    const total    = subtotal + igv;
-
     const payload = {
-      fecha:            new Date().toISOString().split('T')[0],
-      proveedor_nombre: 'Sin proveedor',
-      location_dest_id: locationDestId,
-      subtotal:         subtotal.toFixed(2),
-      igv:              igv.toFixed(2),
-      total:            total.toFixed(2),
-      usuario:          '{{ auth()->user()->name ?? "web" }}',
       items: receptionRows.map(r => ({
         producto_id:      r.producto_id,
         producto_nombre:  r.producto_nombre,
@@ -783,36 +765,28 @@ document.getElementById('btnPrintExcel').addEventListener('click', async () => {
       }))
     };
 
-    // Guardar recepción
-    const resStore = await fetch(ROUTES.store, {
+    const resExport = await fetch('/api/recepcion/export-bartender', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
       body: JSON.stringify(payload)
     });
-    const dataStore = await resStore.json();
 
-    if (!dataStore.success) {
-      toast(dataStore.error || 'Error al guardar recepción', 'error', 'x-circle');
+    if (!resExport.ok) {
+      toast('Error al generar Excel', 'error', 'x-circle');
       return;
     }
 
-    // Obtener IDs de los items
-    const itemIds = dataStore.recepcion.items.map(i => i.id);
-
-    // Exportar Excel — descarga directa sin popup (evita el bloqueador del navegador)
-    const exportUrl = `/api/recepcion/export-bartender?ids=${itemIds.join(',')}`;
+    const blob = await resExport.blob();
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = exportUrl;
-    a.download = '';
+    a.href = url;
+    a.download = '010.xlsx';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 
-    toast(`Excel generado · Recepción #${dataStore.recepcion.id}`, 'success', 'file-spreadsheet');
-
-    // NO limpiar carrito - el usuario debe poder recepcionar después en Odoo
-    // receptionRows = [];
-    // renderCart();
+    toast(`Excel generado correctamente`, 'success', 'file-spreadsheet');
 
   } catch (e) {
     console.error(e);
