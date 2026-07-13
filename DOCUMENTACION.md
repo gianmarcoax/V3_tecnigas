@@ -392,6 +392,14 @@ Items de cada traslado (productos trasladados).
 | PUT | `/api/traslado/{id}` | Actualizar traslado local |
 | DELETE | `/api/traslado/{id}` | Eliminar traslado local |
 
+### Stock (Consulta)
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/stock` | Vista principal (Blade SPA) |
+| GET | `/api/stock/catalogo` | Catálogo estático sin stock (Caché 24h) |
+| GET | `/api/stock/cantidades` | Cantidades en tienda y almacén (Caché 3m) |
+| GET | `/api/stock/imagenes` | Imágenes en base64 (Caché 7 días por producto) |
+
 ---
 
 ## 📦 Models y Relaciones
@@ -465,7 +473,7 @@ Employee::ventas() // filtra active=true y department LIKE '%venta%'
 | API Routes | ✅ Completo | Endpoints registrados |
 | Módulo Asistencias | ✅ Completo | Horarios con modal, CRUD en tiempo real con Odoo |
 | Módulo Remuneración | ✅ Completo | Interfaz completa, justificaciones y configuración |
-| Módulo Stock | 🔲 Pendiente | |
+| Módulo Stock | ✅ Completo | SPA con caché inteligente multietapa (24h, 3m, 7d) |
 | Módulo Catálogo | 🔲 Pendiente | |
 | Módulo Recepción | ✅ Completo | 9 endpoints, SPA 873 líneas, caché optimizado |
 | Módulo Traslado | ✅ Completo | 9 endpoints, SPA 689 líneas, caché optimizado |
@@ -495,7 +503,26 @@ Employee::ventas() // filtra active=true y department LIKE '%venta%'
 
 ---
 
-## 📦 Módulos de Inventario (Recepción y Traslado)
+## 📦 Módulos de Inventario (Stock, Recepción y Traslado)
+
+### Consulta de Stock
+
+**Funcionalidad:** Vista rápida y centralizada para consultar el inventario de productos diferenciando entre ubicaciones (Almacén vs Tienda).
+
+**Características técnicas:**
+- **Caché Inteligente por Etapas (Alto Rendimiento):**
+  - **Catálogo base** (`/api/stock/catalogo`): En caché por 24 horas (nombres, códigos, código de barras, categorías).
+  - **Cantidades** (`/api/stock/cantidades`): En caché por 3 minutos. Agrupa cantidades calculando `qty_available`, `almacen_qty` y `tienda_qty`.
+  - **Imágenes** (`/api/stock/imagenes`): Miniaturas base64 recuperadas en lotes de 50 y mantenidas en caché por 7 días por producto.
+- **Rendimiento superior:** Al separar catálogo estático (24h) de datos dinámicos (3 min), la vista de stock es extremadamente ágil.
+
+**Integración Odoo:**
+```
+1. product.product (catálogo) y product.category (categorías)
+2. stock.quant (cantidades agrupadas por ubicaciones de tienda o almacén)
+```
+
+---
 
 ### Recepción de Mercancía
 
