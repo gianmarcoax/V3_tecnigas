@@ -20,8 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Forzar HTTPS en producción para evitar problemas de contenido mixto en Railway
-        if (config('app.env') === 'production') {
+        // Activa HTTPS solo cuando Nginx Proxy Manager lo indica
+        // (no forzar en producción directamente)
+        if (request()->server('HTTP_X_FORWARDED_PROTO') === 'https') {
             URL::forceScheme('https');
         }
     }

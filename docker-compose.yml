@@ -1,0 +1,176 @@
+# ============================================================
+# docker-compose.yml — Dashboard Tecnigas (V3 Laravel)
+#
+# SERVICIOS:
+#   tecnigas_app   → PHP 8.2-FPM (Laravel)
+#   tecnigas_nginx → Nginx (sirve la app al exterior)
+#   tecnigas_db    → PostgreSQL 16 (BD local del dashboard)
+#
+# PUERTOS HOST UTILIZADOS:
+#   8080 → Nginx (HTTP público — Nginx Proxy Manager lo captura)
+#   5433 → PostgreSQL (acceso local/debug solamente)
+#
+# PUERTOS QUE NO SE TOCAN:
+#   80, 81, 443 → proxy_manager existente
+#   22           → SSH
+#   10018, 11018, 20018, 21018 → Odoo existentes
+# ============================================================
+
+services:
+
+  # ──────────────────────────────────────────────
+  # PostgreSQL 16 — Base de datos local de Tecnigas
+  # ──────────────────────────────────────────────
+  tecnigas_db:
+    image: postgres:16-alpine
+    container_name: tecnigas_db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-tecnigas_bd}
+      POSTGRES_USER: ${DB_USERNAME:-tecnigas_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      # Zona horaria Perú
+      TZ: America/Lima
+
+    volumes:
+      # Volumen persistente: los datos NUNCA se pierden al recrear el contenedor
+      - tecnigas_pgdata:/var/lib/postgresql/data
+
+    networks:
+      - tecnigas_internal
+
+    # Solo exponer PostgreSQL en localhost del VPS (NO al exterior)
+    ports:
+      - "127.0.0.1:5433:5432"
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-tecnigas_user} -d ${DB_DATABASE:-tecnigas_bd}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+
+  # ──────────────────────────────────────────────
+  # PHP 8.2-FPM — Aplicación Laravel 11
+  # ──────────────────────────────────────────────
+  tecnigas_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+
+    container_name: tecnigas_app
+    restart: unless-stopped
+
+    environment:
+      # ── App ──────────────────────────────────
+      APP_NAME: ${APP_NAME:-Dashboard Tecnigas}
+      APP_ENV: production
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: "false"
+      APP_TIMEZONE: America/Lima
+      APP_URL: ${APP_URL:-http://localhost:8080}
+
+      # ── Base de datos local ──────────────────
+      DB_CONNECTION: pgsql
+      DB_HOST: tecnigas_db        # nombre del servicio Docker
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-tecnigas_bd}
+      DB_USERNAME: ${DB_USERNAME:-tecnigas_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # ── Session / Cache / Queue ──────────────
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+
+      # ── Logs ─────────────────────────────────
+      LOG_CHANNEL: stack
+      LOG_LEVEL: error
+
+      # ── Odoo 18 (ERP externo) ────────────────
+      ODOO_URL: ${ODOO_URL}
+      ODOO_DB: ${ODOO_DB}
+      ODOO_USER: ${ODOO_USER}
+      ODOO_APIKEY: ${ODOO_APIKEY}
+
+    volumes:
+      # storage/ persistente: logs, caché, archivos subidos
+      - tecnigas_storage:/var/www/html/storage
+
+      # public/storage link (si se usa storage:link)
+      - tecnigas_storage:/var/www/html/public/storage
+
+    networks:
+      - tecnigas_internal
+
+    depends_on:
+      tecnigas_db:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+
+  # ──────────────────────────────────────────────
+  # Nginx — Servidor web / reverse proxy interno
+  # Puerto 8080 del HOST → luego capturado por
+  # Nginx Proxy Manager para app.tecnigass.pe
+  # ──────────────────────────────────────────────
+  tecnigas_nginx:
+    image: nginx:1.25-alpine
+    container_name: tecnigas_nginx
+    restart: unless-stopped
+
+    ports:
+      # 8080 libre en el VPS → disponible para NPM
+      - "8080:80"
+
+    volumes:
+      # Configuración Nginx
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+      # public/ del proyecto (archivos estáticos sin pasar por PHP)
+      - ./public:/var/www/html/public:ro
+
+      # Assets Vite compilados (public/build/)
+      # Nota: también en :ro para seguridad
+      - tecnigas_storage:/var/www/html/storage:ro
+
+    networks:
+      - tecnigas_internal
+
+    depends_on:
+      - tecnigas_app
+
+
+# ──────────────────────────────────────────────────
+# VOLÚMENES PERSISTENTES
+# ──────────────────────────────────────────────────
+volumes:
+  # Datos PostgreSQL — NUNCA eliminar manualmente
+  tecnigas_pgdata:
+    driver: local
+    name: tecnigas_pgdata
+
+  # Storage Laravel (logs, caché, archivos)
+  tecnigas_storage:
+    driver: local
+    name: tecnigas_storage
+
+
+# ──────────────────────────────────────────────────
+# RED INTERNA
+# Aislada del resto de contenedores del VPS
+# ──────────────────────────────────────────────────
+networks:
+  tecnigas_internal:
+    driver: bridge
+    name: tecnigas_internal

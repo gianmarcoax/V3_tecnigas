@@ -12,6 +12,17 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // ── Trust Proxies (Nginx Proxy Manager + red Docker) ──────────
+        // Permite que Laravel genere URLs HTTPS correctas cuando está
+        // detrás de Nginx Proxy Manager. Sin esto, los redirects serían HTTP.
+        $middleware->trustProxies(
+            at: '*',  // Confiar en todos los proxies (red Docker privada)
+            headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
+                     \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
+                     \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
+                     \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO
+        );
+
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);

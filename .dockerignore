@@ -1,0 +1,51 @@
+# ============================================================
+# .dockerignore — Archivos excluidos del build context Docker
+# ============================================================
+
+# Entorno local — nunca dentro de la imagen
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencias locales (se instalan en el build)
+node_modules
+vendor
+
+# Assets compilados localmente (se compilan en el build)
+public/build
+public/hot
+public/storage
+
+# Logs y caché local
+storage/logs/*.log
+storage/framework/cache
+storage/framework/sessions
+storage/framework/views
+
+# Archivos de desarrollo
+*.md
+*.docx
+*.txt
+*.svg
+diff.txt
+diff_utf8.txt
+graphify-out
+
+# Docker files propios (no necesitan copiarse)
+docker
+Dockerfile
+docker-compose.yml
+docker-compose.override.yml
+deploy.sh
+
+# IDE y OS
+.idea
+.vscode
+.fleet
+*.DS_Store
+Thumbs.db
